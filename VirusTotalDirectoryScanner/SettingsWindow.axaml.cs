@@ -18,6 +18,14 @@ public sealed partial class SettingsWindow : Window
 	private void Cancel_Click(object? sender, RoutedEventArgs e)
 		=> Close(false);
 
+	private void ToggleApiKey_Click(object? sender, RoutedEventArgs e)
+	{
+		if (DataContext is SettingsDialogViewModel vm)
+		{
+			vm.ToggleApiKeyVisibility();
+		}
+	}
+
 	private async void Save_Click(object? sender, RoutedEventArgs e)
 	{
 		if (DataContext is not SettingsDialogViewModel vm)

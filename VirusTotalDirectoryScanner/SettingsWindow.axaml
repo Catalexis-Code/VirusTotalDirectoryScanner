@@ -12,7 +12,10 @@
       <TabItem Header="VirusTotal">
         <StackPanel Margin="8" Spacing="8">
           <TextBlock Text="API Key (stored in User Secrets)" FontWeight="SemiBold" />
-          <TextBox Text="{Binding ApiKey, Mode=TwoWay}" PasswordChar="*" Watermark="Enter your VirusTotal API key" />
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBox Grid.Column="0" Text="{Binding ApiKey, Mode=TwoWay}" PasswordChar="{Binding ApiKeyPasswordChar}" Watermark="Enter your VirusTotal API key" />
+            <Button Grid.Column="1" Margin="4,0,0,0" Click="ToggleApiKey_Click" Content="👁" ToolTip.Tip="Toggle API Key Visibility" />
+          </Grid>
 
           <TextBlock Text="User Secrets file" FontWeight="SemiBold" Margin="0,12,0,0" />
           <TextBox Text="{Binding UserSecretsFilePath}" IsReadOnly="True" />

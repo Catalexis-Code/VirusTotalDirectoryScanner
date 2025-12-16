@@ -6,6 +6,7 @@ namespace VirusTotalDirectoryScanner.Settings;
 internal sealed class SettingsDialogViewModel : INotifyPropertyChanged
 {
 	private string _apiKey = string.Empty;
+	private char _apiKeyPasswordChar = '*';
 	private string? _scanDirectory;
 	private string? _cleanDirectory;
 	private string? _compromisedDirectory;
@@ -21,6 +22,17 @@ internal sealed class SettingsDialogViewModel : INotifyPropertyChanged
 	{
 		get => _apiKey;
 		set => SetProperty(ref _apiKey, value);
+	}
+
+	public char ApiKeyPasswordChar
+	{
+		get => _apiKeyPasswordChar;
+		set => SetProperty(ref _apiKeyPasswordChar, value);
+	}
+
+	public void ToggleApiKeyVisibility()
+	{
+		ApiKeyPasswordChar = ApiKeyPasswordChar == '*' ? '\0' : '*';
 	}
 
 	public string? ScanDirectory

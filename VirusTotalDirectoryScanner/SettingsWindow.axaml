@@ -24,10 +24,18 @@
             <NumericUpDown Value="{Binding QuotaPerMinute, Mode=TwoWay}" Minimum="0" />
 
             <TextBlock Text="Requests per day" FontWeight="SemiBold" Margin="0,8,0,0" />
-            <NumericUpDown Value="{Binding QuotaPerDay, Mode=TwoWay}" Minimum="0" />
+            <Grid ColumnDefinitions="*, Auto, Auto">
+                <NumericUpDown Grid.Column="0" Value="{Binding QuotaPerDay, Mode=TwoWay}" Minimum="0" />
+                <TextBlock Grid.Column="1" Text="Used:" VerticalAlignment="Center" Margin="8,0,4,0"/>
+                <NumericUpDown Grid.Column="2" Value="{Binding UsedToday, Mode=TwoWay}" Minimum="0" Width="100" />
+            </Grid>
 
             <TextBlock Text="Requests per month" FontWeight="SemiBold" Margin="0,8,0,0" />
-            <NumericUpDown Value="{Binding QuotaPerMonth, Mode=TwoWay}" Minimum="0" />
+            <Grid ColumnDefinitions="*, Auto, Auto">
+                <NumericUpDown Grid.Column="0" Value="{Binding QuotaPerMonth, Mode=TwoWay}" Minimum="0" />
+                <TextBlock Grid.Column="1" Text="Used:" VerticalAlignment="Center" Margin="8,0,4,0"/>
+                <NumericUpDown Grid.Column="2" Value="{Binding UsedThisMonth, Mode=TwoWay}" Minimum="0" Width="100" />
+            </Grid>
           </StackPanel>
         </ScrollViewer>
       </TabItem>

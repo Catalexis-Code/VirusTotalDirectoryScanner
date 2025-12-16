@@ -14,6 +14,8 @@ internal sealed class SettingsDialogViewModel : INotifyPropertyChanged
 	private int _quotaPerMinute;
 	private int _quotaPerDay;
 	private int _quotaPerMonth;
+	private int _usedToday;
+	private int _usedThisMonth;
 	private string? _errorMessage;
 
 	public event PropertyChangedEventHandler? PropertyChanged;
@@ -77,6 +79,18 @@ internal sealed class SettingsDialogViewModel : INotifyPropertyChanged
 		set => SetProperty(ref _quotaPerMonth, value);
 	}
 
+	public int UsedToday
+	{
+		get => _usedToday;
+		set => SetProperty(ref _usedToday, value);
+	}
+
+	public int UsedThisMonth
+	{
+		get => _usedThisMonth;
+		set => SetProperty(ref _usedThisMonth, value);
+	}
+
 	public string UserSettingsFilePath { get; }
 	public string? UserSecretsFilePath { get; }
 
@@ -103,7 +117,9 @@ internal sealed class SettingsDialogViewModel : INotifyPropertyChanged
 			LogFilePath = settings.Paths.LogFilePath,
 			QuotaPerMinute = settings.Quota.PerMinute,
 			QuotaPerDay = settings.Quota.PerDay,
-			QuotaPerMonth = settings.Quota.PerMonth
+			QuotaPerMonth = settings.Quota.PerMonth,
+			UsedToday = settings.Quota.UsedToday,
+			UsedThisMonth = settings.Quota.UsedThisMonth
 		};
 	}
 
@@ -115,7 +131,9 @@ internal sealed class SettingsDialogViewModel : INotifyPropertyChanged
 			{
 				PerMinute = QuotaPerMinute,
 				PerDay = QuotaPerDay,
-				PerMonth = QuotaPerMonth
+				PerMonth = QuotaPerMonth,
+				UsedToday = UsedToday,
+				UsedThisMonth = UsedThisMonth
 			},
 			Paths = new PathsSettings
 			{

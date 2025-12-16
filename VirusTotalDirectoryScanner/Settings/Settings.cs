@@ -12,6 +12,11 @@ public sealed class QuotaSettings
 	public int PerMinute { get; set; }
 	public int PerDay { get; set; }
 	public int PerMonth { get; set; }
+
+	// Usage tracking
+	public int UsedToday { get; set; }
+	public int UsedThisMonth { get; set; }
+	public DateTime LastUsedDate { get; set; }
 }
 
 public sealed class PathsSettings

@@ -11,39 +11,12 @@ public class VirusTotalService : IVirusTotalService
     private readonly IVirusTotalApi _api;
     private readonly ISettingsService _settingsService;
     private readonly IQuotaService _quotaService;
-    private readonly RateLimiter _limiter;
 
-    public VirusTotalService(ISettingsService settingsService, IQuotaService quotaService)
+    public VirusTotalService(ISettingsService settingsService, IQuotaService quotaService, IVirusTotalApi api)
     {
         _settingsService = settingsService;
         _quotaService = quotaService;
-        var settings = _settingsService.CurrentSettings;
-        var apiKey = _settingsService.ApiKey;
-
-        if (string.IsNullOrWhiteSpace(apiKey))
-        {
-            throw new InvalidOperationException("VirusTotal API Key is missing.");
-        }
-
-        // Initialize Rate Limiter based on settings
-        int permitLimit = settings.Quota.PerMinute > 0 ? settings.Quota.PerMinute : 4;
-        
-        _limiter = new FixedWindowRateLimiter(new FixedWindowRateLimiterOptions
-        {
-            PermitLimit = permitLimit,
-            Window = TimeSpan.FromMinutes(1),
-            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
-            QueueLimit = 100,
-            AutoReplenishment = true
-        });
-
-        var httpClient = new HttpClient(new ThrottlingHandler(_limiter))
-        {
-            BaseAddress = new Uri("https://www.virustotal.com/api/v3")
-        };
-        httpClient.DefaultRequestHeaders.Add("x-apikey", apiKey);
-
-        _api = RestService.For<IVirusTotalApi>(httpClient);
+        _api = api;
     }
 
     public async Task<(ScanResultStatus Status, int DetectionCount, string Hash, string? Message)> ScanFileAsync(string filePath, CancellationToken ct = default)

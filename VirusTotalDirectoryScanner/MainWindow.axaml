@@ -2,10 +2,20 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="VirusTotalDirectoryScanner.MainWindow"
         Title="VirusTotalDirectoryScanner"
+        WindowStartupLocation="CenterScreen"
         Width="520"
         Height="200">
-  <StackPanel Margin="16" Spacing="8">
-    <TextBlock FontSize="18" Text="VirusTotalDirectoryScanner" />
-    <TextBlock x:Name="StatusText" Text="Loading configuration…" />
-  </StackPanel>
+  <Grid Margin="16" RowDefinitions="Auto,Auto,*" RowSpacing="12">
+    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+      <TextBlock FontSize="20" FontWeight="SemiBold" Text="VirusTotalDirectoryScanner" />
+      <Button Grid.Column="1" Content="Settings…" Click="OpenSettings_Click" />
+    </Grid>
+
+    <Separator Grid.Row="1" />
+
+    <StackPanel Grid.Row="2" Spacing="8">
+      <TextBlock FontWeight="SemiBold" Text="Status" />
+      <TextBlock x:Name="StatusText" Text="Loading configuration…" />
+    </StackPanel>
+  </Grid>
 </Window>

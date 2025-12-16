@@ -1,7 +1,8 @@
 using Avalonia.Controls;
+using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
-using Microsoft.Extensions.Configuration;
 using AppSettings = VirusTotalDirectoryScanner.Settings.Settings;
+using VirusTotalDirectoryScanner.Settings;
 
 namespace VirusTotalDirectoryScanner;
 
@@ -25,16 +26,9 @@ public sealed partial class MainWindow : Window
 		{
 			SetStatus("Loading configuration…");
 
-			IConfiguration config = new ConfigurationBuilder()
-				.SetBasePath(AppDomain.CurrentDomain.BaseDirectory)
-				.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
-				.AddUserSecrets<App>(optional: true)
-				.Build();
-
-			string? apiKey = config["VirusTotalApiKey"];
-
-			AppSettings settings = new();
-			config.Bind(settings);
+			var config = AppConfiguration.BuildConfiguration();
+			string? apiKey = AppConfiguration.GetVirusTotalApiKey(config);
+			AppSettings settings = AppConfiguration.GetAppSettings(config);
 
 			bool apiKeyFound = !string.IsNullOrWhiteSpace(apiKey);
 			bool scanPathConfigured = !string.IsNullOrWhiteSpace(settings.Paths.ScanDirectory);
@@ -44,6 +38,32 @@ public sealed partial class MainWindow : Window
 		catch (Exception ex)
 		{
 			SetStatus($"Failed to load configuration: {ex.Message}");
+		}
+	}
+
+	private async void OpenSettings_Click(object? sender, RoutedEventArgs e)
+	{
+		try
+		{
+			var config = AppConfiguration.BuildConfiguration();
+			var settings = AppConfiguration.GetAppSettings(config);
+			string apiKey = AppConfiguration.GetVirusTotalApiKey(config) ?? string.Empty;
+
+			var vm = SettingsDialogViewModel.From(settings, apiKey, AppConfiguration.UserSettingsFilePath);
+			var dialog = new SettingsWindow
+			{
+				DataContext = vm
+			};
+
+			bool? saved = await dialog.ShowDialog<bool?>(this);
+			if (saved is true)
+			{
+				LoadConfigurationSummary();
+			}
+		}
+		catch (Exception ex)
+		{
+			SetStatus($"Failed to open settings: {ex.Message}");
 		}
 	}
 

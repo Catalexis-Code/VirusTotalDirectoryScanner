@@ -1,0 +1,65 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="VirusTotalDirectoryScanner.SettingsWindow"
+        Title="Settings"
+        WindowStartupLocation="CenterOwner"
+        Width="720"
+        Height="520">
+  <Grid Margin="16" RowDefinitions="Auto,*,Auto" RowSpacing="12">
+    <TextBlock FontSize="20" FontWeight="SemiBold" Text="Settings" />
+
+    <TabControl Grid.Row="1">
+      <TabItem Header="VirusTotal">
+        <StackPanel Margin="8" Spacing="8">
+          <TextBlock Text="API Key (stored in User Secrets)" FontWeight="SemiBold" />
+          <TextBox Text="{Binding ApiKey, Mode=TwoWay}" PasswordChar="*" Watermark="Enter your VirusTotal API key" />
+
+          <TextBlock Text="User Secrets file" FontWeight="SemiBold" Margin="0,12,0,0" />
+          <TextBox Text="{Binding UserSecretsFilePath}" IsReadOnly="True" />
+        </StackPanel>
+      </TabItem>
+
+      <TabItem Header="Paths">
+        <ScrollViewer>
+          <StackPanel Margin="8" Spacing="8">
+            <TextBlock Text="Scan directory" FontWeight="SemiBold" />
+            <TextBox Text="{Binding ScanDirectory, Mode=TwoWay}" />
+
+            <TextBlock Text="Clean directory" FontWeight="SemiBold" Margin="0,8,0,0" />
+            <TextBox Text="{Binding CleanDirectory, Mode=TwoWay}" />
+
+            <TextBlock Text="Compromised directory" FontWeight="SemiBold" Margin="0,8,0,0" />
+            <TextBox Text="{Binding CompromisedDirectory, Mode=TwoWay}" />
+
+            <TextBlock Text="Log file path" FontWeight="SemiBold" Margin="0,8,0,0" />
+            <TextBox Text="{Binding LogFilePath, Mode=TwoWay}" />
+
+            <TextBlock Text="User settings file" FontWeight="SemiBold" Margin="0,12,0,0" />
+            <TextBox Text="{Binding UserSettingsFilePath}" IsReadOnly="True" />
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
+      <TabItem Header="Quota">
+        <StackPanel Margin="8" Spacing="8">
+          <TextBlock Text="Requests per minute" FontWeight="SemiBold" />
+          <NumericUpDown Value="{Binding QuotaPerMinute, Mode=TwoWay}" Minimum="0" />
+
+          <TextBlock Text="Requests per day" FontWeight="SemiBold" Margin="0,8,0,0" />
+          <NumericUpDown Value="{Binding QuotaPerDay, Mode=TwoWay}" Minimum="0" />
+
+          <TextBlock Text="Requests per month" FontWeight="SemiBold" Margin="0,8,0,0" />
+          <NumericUpDown Value="{Binding QuotaPerMonth, Mode=TwoWay}" Minimum="0" />
+
+          <TextBlock Text="These values are stored in your user settings file." Margin="0,12,0,0" />
+        </StackPanel>
+      </TabItem>
+    </TabControl>
+
+    <Grid Grid.Row="2" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8" VerticalAlignment="Center">
+      <TextBlock Text="{Binding ErrorMessage}" Foreground="Red" VerticalAlignment="Center" />
+      <Button Grid.Column="1" Content="Cancel" Click="Cancel_Click" />
+      <Button Grid.Column="2" Content="Save" IsDefault="True" Click="Save_Click" />
+    </Grid>
+  </Grid>
+</Window>

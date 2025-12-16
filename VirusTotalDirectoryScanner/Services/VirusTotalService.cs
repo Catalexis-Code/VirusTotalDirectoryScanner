@@ -9,16 +9,19 @@ namespace VirusTotalDirectoryScanner.Services;
 public class VirusTotalService
 {
     private readonly IVirusTotalApi _api;
-    private readonly Settings.Settings _settings;
-    private readonly string _userSettingsPath;
+    private readonly SettingsService _settingsService;
     private readonly RateLimiter _limiter;
-    private readonly string _apiKey;
 
-    public VirusTotalService(string apiKey, Settings.Settings settings, string userSettingsPath)
+    public VirusTotalService(SettingsService settingsService)
     {
-        _apiKey = apiKey;
-        _settings = settings;
-        _userSettingsPath = userSettingsPath;
+        _settingsService = settingsService;
+        var settings = _settingsService.CurrentSettings;
+        var apiKey = _settingsService.ApiKey;
+
+        if (string.IsNullOrWhiteSpace(apiKey))
+        {
+            throw new InvalidOperationException("VirusTotal API Key is missing.");
+        }
 
         // Initialize Rate Limiter based on settings
         int permitLimit = settings.Quota.PerMinute > 0 ? settings.Quota.PerMinute : 4;
@@ -87,7 +90,7 @@ public class VirusTotalService
 
             // Use a temporary HttpClient to upload to the dynamic URL
             using var uploadClient = new HttpClient();
-            uploadClient.DefaultRequestHeaders.Add("x-apikey", _apiKey);
+            uploadClient.DefaultRequestHeaders.Add("x-apikey", _settingsService.ApiKey);
             
             using var content = new MultipartFormDataContent();
             await using var fileStream = File.OpenRead(filePath);
@@ -155,30 +158,31 @@ public class VirusTotalService
     {
         DateTime today = DateTime.Today;
         DateTime now = DateTime.Now;
+        var settings = _settingsService.CurrentSettings;
 
         // Reset counters if needed
-        if (_settings.Quota.LastUsedDate.Date != today)
+        if (settings.Quota.LastUsedDate.Date != today)
         {
-            _settings.Quota.UsedToday = 0;
-            _settings.Quota.LastUsedDate = now;
+            settings.Quota.UsedToday = 0;
+            settings.Quota.LastUsedDate = now;
             
-            if (_settings.Quota.LastUsedDate.Month != today.Month)
+            if (settings.Quota.LastUsedDate.Month != today.Month)
             {
-                _settings.Quota.UsedThisMonth = 0;
+                settings.Quota.UsedThisMonth = 0;
             }
             
             // We don't await save here to avoid async void/task complexity in sync check, 
             // but we will save on increment.
         }
 
-        if (_settings.Quota.PerDay > 0 && _settings.Quota.UsedToday >= _settings.Quota.PerDay)
+        if (settings.Quota.PerDay > 0 && settings.Quota.UsedToday >= settings.Quota.PerDay)
         {
-            throw new Exception($"Daily quota exceeded ({_settings.Quota.UsedToday}/{_settings.Quota.PerDay})");
+            throw new Exception($"Daily quota exceeded ({settings.Quota.UsedToday}/{settings.Quota.PerDay})");
         }
 
-        if (_settings.Quota.PerMonth > 0 && _settings.Quota.UsedThisMonth >= _settings.Quota.PerMonth)
+        if (settings.Quota.PerMonth > 0 && settings.Quota.UsedThisMonth >= settings.Quota.PerMonth)
         {
-            throw new Exception($"Monthly quota exceeded ({_settings.Quota.UsedThisMonth}/{_settings.Quota.PerMonth})");
+            throw new Exception($"Monthly quota exceeded ({settings.Quota.UsedThisMonth}/{settings.Quota.PerMonth})");
         }
     }
 
@@ -187,11 +191,12 @@ public class VirusTotalService
         // Re-check quota before incrementing to be safe
         CheckQuota();
 
-        _settings.Quota.UsedToday++;
-        _settings.Quota.UsedThisMonth++;
-        _settings.Quota.LastUsedDate = DateTime.Now;
+        var settings = _settingsService.CurrentSettings;
+        settings.Quota.UsedToday++;
+        settings.Quota.UsedThisMonth++;
+        settings.Quota.LastUsedDate = DateTime.Now;
 
-        await UserSettingsStore.SaveAsync(_userSettingsPath, _settings, ct);
+        await UserSettingsStore.SaveAsync(_settingsService.UserSettingsFilePath, settings, ct);
     }
 }
 

@@ -9,9 +9,11 @@ namespace VirusTotalDirectoryScanner.Services;
 public class DirectoryScannerService : IDisposable
 {
     private readonly VirusTotalService _vtService;
-    private readonly Settings.Settings _settings;
-    private readonly Action<ScanResult> _onResultUpdated;
-    private readonly Action<string> _onLog;
+    private readonly SettingsService _settingsService;
+    
+    public event EventHandler<ScanResult>? ScanResultUpdated;
+    public event EventHandler<string>? LogMessage;
+
     private FileSystemWatcher? _watcher;
     private readonly ConcurrentQueue<string> _fileQueue = new();
     private readonly CancellationTokenSource _cts = new();
@@ -22,14 +24,10 @@ public class DirectoryScannerService : IDisposable
 
     public DirectoryScannerService(
         VirusTotalService vtService, 
-        Settings.Settings settings, 
-        Action<ScanResult> onResultUpdated,
-        Action<string> onLog)
+        SettingsService settingsService)
     {
         _vtService = vtService;
-        _settings = settings;
-        _onResultUpdated = onResultUpdated;
-        _onLog = onLog;
+        _settingsService = settingsService;
         
         _lockedFileTimer = new Timer(30000); // 30 seconds
         _lockedFileTimer.Elapsed += OnLockedFileTimerElapsed;
@@ -38,40 +36,41 @@ public class DirectoryScannerService : IDisposable
 
     public void Start()
     {
-        if (string.IsNullOrWhiteSpace(_settings.Paths.ScanDirectory))
+        var settings = _settingsService.CurrentSettings;
+        if (string.IsNullOrWhiteSpace(settings.Paths.ScanDirectory))
         {
-            _onLog("Scan directory is not configured.");
+            LogMessage?.Invoke(this, "Scan directory is not configured.");
             return;
         }
 
-        if (!Directory.Exists(_settings.Paths.ScanDirectory))
+        if (!Directory.Exists(settings.Paths.ScanDirectory))
         {
             try
             {
-                Directory.CreateDirectory(_settings.Paths.ScanDirectory);
-                _onLog($"Created scan directory: {_settings.Paths.ScanDirectory}");
+                Directory.CreateDirectory(settings.Paths.ScanDirectory);
+                LogMessage?.Invoke(this, $"Created scan directory: {settings.Paths.ScanDirectory}");
             }
             catch (Exception ex)
             {
-                _onLog($"Failed to create scan directory: {ex.Message}");
+                LogMessage?.Invoke(this, $"Failed to create scan directory: {ex.Message}");
                 return;
             }
         }
 
-        _watcher = new FileSystemWatcher(_settings.Paths.ScanDirectory);
+        _watcher = new FileSystemWatcher(settings.Paths.ScanDirectory);
         _watcher.Created += OnFileCreated;
         _watcher.EnableRaisingEvents = true;
 
         _processingTask = Task.Run(ProcessQueueAsync);
-        _onLog($"Started monitoring {_settings.Paths.ScanDirectory}");
+        LogMessage?.Invoke(this, $"Started monitoring {settings.Paths.ScanDirectory}");
         
         // Process existing files
         Task.Run(() => 
         {
             try
             {
-                var files = Directory.GetFiles(_settings.Paths.ScanDirectory);
-                _onLog($"Found {files.Length} existing files.");
+                var files = Directory.GetFiles(settings.Paths.ScanDirectory);
+                LogMessage?.Invoke(this, $"Found {files.Length} existing files.");
                 foreach (var file in files)
                 {
                     EnqueueFile(file);
@@ -79,7 +78,7 @@ public class DirectoryScannerService : IDisposable
             }
             catch (Exception ex)
             {
-                _onLog($"Error detecting existing files: {ex.Message}");
+                LogMessage?.Invoke(this, $"Error detecting existing files: {ex.Message}");
             }
         });
     }
@@ -91,8 +90,9 @@ public class DirectoryScannerService : IDisposable
 
     private void EnqueueFile(string fullPath)
     {
-        if (!string.IsNullOrEmpty(_settings.Paths.LogFilePath) && 
-            string.Equals(Path.GetFullPath(fullPath), Path.GetFullPath(_settings.Paths.LogFilePath), StringComparison.OrdinalIgnoreCase))
+        var settings = _settingsService.CurrentSettings;
+        if (!string.IsNullOrEmpty(settings.Paths.LogFilePath) && 
+            string.Equals(Path.GetFullPath(fullPath), Path.GetFullPath(settings.Paths.LogFilePath), StringComparison.OrdinalIgnoreCase))
         {
             return;
         }
@@ -100,7 +100,7 @@ public class DirectoryScannerService : IDisposable
         _fileQueue.Enqueue(fullPath);
         
         // Notify UI of pending file
-        _onResultUpdated(new ScanResult 
+        ScanResultUpdated?.Invoke(this, new ScanResult 
         { 
             FileName = Path.GetFileName(fullPath), 
             FullPath = fullPath, 
@@ -132,7 +132,7 @@ public class DirectoryScannerService : IDisposable
             FullPath = filePath, 
             Status = ScanStatus.Scanning 
         };
-        _onResultUpdated(result);
+        ScanResultUpdated?.Invoke(this, result);
 
         try
         {
@@ -141,7 +141,7 @@ public class DirectoryScannerService : IDisposable
             {
                 Log($"File is locked: {fileName}. Queuing for retry.");
                 result.Status = ScanStatus.PendingLocked;
-                _onResultUpdated(result);
+                ScanResultUpdated?.Invoke(this, result);
                 
                 _lockedFiles.TryAdd(filePath, 0);
                 if (!_lockedFileTimer.Enabled)
@@ -160,16 +160,17 @@ public class DirectoryScannerService : IDisposable
             result.FileHash = scanResult.Hash;
 
             // 3. Move and Update Status
+            var settings = _settingsService.CurrentSettings;
             if (scanResult.Status == ScanResultStatus.Clean)
             {
                 result.Status = ScanStatus.Clean;
-                MoveFile(filePath, _settings.Paths.CleanDirectory);
+                MoveFile(filePath, settings.Paths.CleanDirectory);
                 Log($"File {fileName} is CLEAN. Moved to clean directory.");
             }
             else if (scanResult.Status == ScanResultStatus.Compromised)
             {
                 result.Status = ScanStatus.Compromised;
-                MoveFile(filePath, _settings.Paths.CompromisedDirectory);
+                MoveFile(filePath, settings.Paths.CompromisedDirectory);
                 Log($"File {fileName} is COMPROMISED. Moved to compromised directory.");
             }
             else if (scanResult.Status == ScanResultStatus.Failed)
@@ -190,7 +191,7 @@ public class DirectoryScannerService : IDisposable
             result.Message = ex.Message;
         }
         
-        _onResultUpdated(result);
+        ScanResultUpdated?.Invoke(this, result);
     }
 
     private void OnLockedFileTimerElapsed(object? sender, ElapsedEventArgs e)
@@ -270,16 +271,17 @@ public class DirectoryScannerService : IDisposable
 
     private void Log(string message)
     {
-        _onLog(message);
+        LogMessage?.Invoke(this, message);
         
         try
         {
-            if (!string.IsNullOrWhiteSpace(_settings.Paths.LogFilePath))
+            var settings = _settingsService.CurrentSettings;
+            if (!string.IsNullOrWhiteSpace(settings.Paths.LogFilePath))
             {
-                string logDir = Path.GetDirectoryName(_settings.Paths.LogFilePath)!;
+                string logDir = Path.GetDirectoryName(settings.Paths.LogFilePath)!;
                 if (!Directory.Exists(logDir)) Directory.CreateDirectory(logDir);
                 
-                File.AppendAllText(_settings.Paths.LogFilePath, $"{DateTime.Now}: {message}{Environment.NewLine}");
+                File.AppendAllText(settings.Paths.LogFilePath, $"{DateTime.Now}: {message}{Environment.NewLine}");
             }
         }
         catch

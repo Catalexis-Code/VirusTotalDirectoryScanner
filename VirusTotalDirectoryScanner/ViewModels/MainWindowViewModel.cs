@@ -20,7 +20,7 @@ public partial class MainWindowViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(IsMonitoring))]
     private string _statusText = "Ready";
 
-    public bool IsMonitoring => StatusText == "Monitoring";
+    public bool IsMonitoring => StatusText == "Monitoring:";
 
     [ObservableProperty]
     private string _scanDirectoryName = "None";
@@ -114,7 +114,7 @@ public partial class MainWindowViewModel : ObservableObject
             _scannerService.LogMessage += OnLogMessage;
             
             _scannerService.Start();
-            StatusText = "Monitoring";
+            StatusText = "Monitoring:";
         }
         catch (Exception ex)
         {

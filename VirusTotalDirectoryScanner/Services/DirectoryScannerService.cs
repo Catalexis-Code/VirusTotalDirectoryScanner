@@ -12,6 +12,7 @@ public class DirectoryScannerService : IDisposable
     private readonly ISettingsService _settingsService;
     private readonly IFileOperationsService _fileOperationsService;
     private readonly IDirectoryWatcherFactory _watcherFactory;
+    private readonly IRateLimitService _rateLimitService;
     
     public event EventHandler<ScanResult>? ScanResultUpdated;
     public event EventHandler<string>? LogMessage;
@@ -28,12 +29,14 @@ public class DirectoryScannerService : IDisposable
         IVirusTotalService vtService, 
         ISettingsService settingsService,
         IFileOperationsService fileOperationsService,
-        IDirectoryWatcherFactory watcherFactory)
+        IDirectoryWatcherFactory watcherFactory,
+        IRateLimitService rateLimitService)
     {
         _vtService = vtService;
         _settingsService = settingsService;
         _fileOperationsService = fileOperationsService;
         _watcherFactory = watcherFactory;
+        _rateLimitService = rateLimitService;
         
         _lockedFileTimer = new Timer(30000); // 30 seconds
         _lockedFileTimer.Elapsed += OnLockedFileTimerElapsed;
@@ -160,7 +163,46 @@ public class DirectoryScannerService : IDisposable
 
             // 2. Scan
             Log($"Scanning file: {fileName}");
-            var scanResult = await _vtService.ScanFileAsync(filePath, _cts.Token);
+
+            CancellationTokenSource? countdownCts = null;
+            void OnRateLimitHit(object? sender, TimeSpan waitTime)
+            {
+                countdownCts?.Cancel();
+                countdownCts = new CancellationTokenSource();
+                var token = countdownCts.Token;
+
+                Task.Run(async () =>
+                {
+                    var remaining = waitTime;
+                    while (remaining.TotalSeconds > 0 && !token.IsCancellationRequested)
+                    {
+                        result.Message = $"Waiting for quota: {remaining.Seconds}s";
+                        ScanResultUpdated?.Invoke(this, result);
+                        
+                        await Task.Delay(1000, token);
+                        remaining = remaining.Subtract(TimeSpan.FromSeconds(1));
+                    }
+                    if (!token.IsCancellationRequested)
+                    {
+                        result.Message = "";
+                        ScanResultUpdated?.Invoke(this, result);
+                    }
+                }, token);
+            }
+
+            _rateLimitService.RateLimitHit += OnRateLimitHit;
+            (ScanResultStatus Status, int DetectionCount, string Hash, string? Message) scanResult;
+            try
+            {
+                scanResult = await _vtService.ScanFileAsync(filePath, _cts.Token);
+            }
+            finally
+            {
+                _rateLimitService.RateLimitHit -= OnRateLimitHit;
+                countdownCts?.Cancel();
+                result.Message = ""; // Clear message
+                ScanResultUpdated?.Invoke(this, result);
+            }
             
             result.DetectionCount = scanResult.DetectionCount;
             result.FileHash = scanResult.Hash;

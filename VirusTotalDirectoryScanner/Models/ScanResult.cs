@@ -97,7 +97,7 @@ public class ScanResult : INotifyPropertyChanged
     {
         ScanStatus.Pending => "Pending",
         ScanStatus.PendingLocked => "Pending (Locked)",
-        ScanStatus.Scanning => "Scanning...",
+        ScanStatus.Scanning => !string.IsNullOrEmpty(Message) ? Message : "Scanning...",
         ScanStatus.Clean => "Clean",
         ScanStatus.Compromised => $"Compromised ({DetectionCount})",
         ScanStatus.Failed => $"Failed: {Message}",

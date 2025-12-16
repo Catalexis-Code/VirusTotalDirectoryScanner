@@ -76,10 +76,10 @@
               <DataTemplate DataType="models:ScanResult">
                 <Panel>
                   <!-- Scanning -->
-                  <StackPanel Orientation="Horizontal" Spacing="5" IsVisible="{Binding IsScanning}">
-                    <ProgressBar IsIndeterminate="True" Width="20" Height="20" />
-                    <TextBlock Text="Scanning..." VerticalAlignment="Center" />
-                  </StackPanel>
+                  <Grid IsVisible="{Binding IsScanning}">
+                    <ProgressBar IsIndeterminate="True" VerticalAlignment="Stretch" HorizontalAlignment="Stretch" />
+                    <TextBlock Text="{Binding StatusDisplay}" VerticalAlignment="Center" HorizontalAlignment="Center" />
+                  </Grid>
 
                   <!-- Clean -->
                   <StackPanel Orientation="Horizontal" Spacing="5" IsVisible="{Binding IsClean}">

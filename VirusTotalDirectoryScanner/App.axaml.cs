@@ -42,6 +42,7 @@ public sealed partial class App : Application
         services.AddSingleton<IQuotaService, QuotaService>();
         services.AddSingleton<IFileOperationsService, FileOperationsService>();
         services.AddSingleton<IDirectoryWatcherFactory, DirectoryWatcherFactory>();
+        services.AddSingleton<IRateLimitService, RateLimitService>();
         
         services.AddHttpClient("VirusTotalUpload", (sp, client) =>
         {
@@ -56,6 +57,7 @@ public sealed partial class App : Application
         services.AddSingleton<IVirusTotalApi>(sp =>
         {
             var settingsService = sp.GetRequiredService<ISettingsService>();
+            var rateLimitService = sp.GetRequiredService<IRateLimitService>();
             var settings = settingsService.CurrentSettings;
             var apiKey = settingsService.ApiKey;
 
@@ -75,7 +77,7 @@ public sealed partial class App : Application
                 AutoReplenishment = true
             });
 
-            var httpClient = new HttpClient(new ThrottlingHandler(limiter))
+            var httpClient = new HttpClient(new ThrottlingHandler(limiter, rateLimitService))
             {
                 BaseAddress = new Uri("https://www.virustotal.com/api/v3")
             };

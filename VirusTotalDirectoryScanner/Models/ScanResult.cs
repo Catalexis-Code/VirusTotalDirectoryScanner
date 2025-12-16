@@ -51,6 +51,9 @@ public class ScanResult : INotifyPropertyChanged
                 OnPropertyChanged(nameof(IsScanning));
                 OnPropertyChanged(nameof(IsCompromised));
                 OnPropertyChanged(nameof(IsClean));
+                OnPropertyChanged(nameof(IsFailed));
+                OnPropertyChanged(nameof(IsPending));
+                OnPropertyChanged(nameof(IsPendingLocked));
                 OnPropertyChanged(nameof(IsOther));
             }
         }
@@ -91,7 +94,10 @@ public class ScanResult : INotifyPropertyChanged
     public bool IsScanning => Status == ScanStatus.Scanning;
     public bool IsCompromised => Status == ScanStatus.Compromised;
     public bool IsClean => Status == ScanStatus.Clean;
-    public bool IsOther => !IsScanning && !IsClean && !IsCompromised;
+    public bool IsFailed => Status == ScanStatus.Failed;
+    public bool IsPending => Status == ScanStatus.Pending;
+    public bool IsPendingLocked => Status == ScanStatus.PendingLocked;
+    public bool IsOther => !IsScanning && !IsClean && !IsCompromised && !IsFailed && !IsPending && !IsPendingLocked;
 
     public string StatusDisplay => Status switch
     {

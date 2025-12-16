@@ -13,7 +13,7 @@
         <StackPanel Margin="8" Spacing="8">
           <TextBlock Text="API Key (stored in User Secrets)" FontWeight="SemiBold" />
           <Grid ColumnDefinitions="*,Auto">
-            <TextBox Grid.Column="0" Text="{Binding ApiKey, Mode=TwoWay}" PasswordChar="{Binding ApiKeyPasswordChar}" Watermark="Enter your VirusTotal API key" />
+            <TextBox x:Name="ApiKeyTextBox" Grid.Column="0" Text="{Binding ApiKey, Mode=TwoWay}" PasswordChar="{Binding ApiKeyPasswordChar}" Watermark="Enter your VirusTotal API key" />
             <Button Grid.Column="1" Margin="4,0,0,0" Click="ToggleApiKey_Click" Content="👁" ToolTip.Tip="Toggle API Key Visibility" />
           </Grid>
 

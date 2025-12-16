@@ -1,3 +1,4 @@
+using System;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
@@ -14,6 +15,19 @@ public sealed partial class SettingsWindow : Window
 
 	private void InitializeComponent()
 		=> AvaloniaXamlLoader.Load(this);
+
+	protected override void OnOpened(EventArgs e)
+	{
+		base.OnOpened(e);
+		if (DataContext is SettingsDialogViewModel vm)
+		{
+			if (string.IsNullOrWhiteSpace(vm.ApiKey) || vm.ApiKey == "REPLACE_WITH_REAL_KEY")
+			{
+				var textBox = this.FindControl<TextBox>("ApiKeyTextBox");
+				textBox?.Focus();
+			}
+		}
+	}
 
 	private void Cancel_Click(object? sender, RoutedEventArgs e)
 		=> Close(false);

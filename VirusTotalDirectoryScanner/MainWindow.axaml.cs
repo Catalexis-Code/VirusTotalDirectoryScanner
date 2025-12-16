@@ -1,3 +1,5 @@
+using System;
+using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
@@ -15,6 +17,7 @@ public sealed partial class MainWindow : Window
 		InitializeComponent();
 		_statusText = this.FindControl<TextBlock>("StatusText");
 		LoadConfigurationSummary();
+		Opened += MainWindow_Opened;
 	}
 
 	private void InitializeComponent()
@@ -41,7 +44,23 @@ public sealed partial class MainWindow : Window
 		}
 	}
 
+	private async void MainWindow_Opened(object? sender, EventArgs e)
+	{
+		var config = AppConfiguration.BuildConfiguration();
+		string? apiKey = AppConfiguration.GetVirusTotalApiKey(config);
+
+		if (string.IsNullOrWhiteSpace(apiKey) || apiKey == "REPLACE_WITH_REAL_KEY")
+		{
+			await OpenSettingsDialog();
+		}
+	}
+
 	private async void OpenSettings_Click(object? sender, RoutedEventArgs e)
+	{
+		await OpenSettingsDialog();
+	}
+
+	private async Task OpenSettingsDialog()
 	{
 		try
 		{

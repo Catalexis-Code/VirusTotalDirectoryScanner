@@ -11,12 +11,12 @@ IConfiguration config = new ConfigurationBuilder()
 // Read settings
 string? apiKey = config["VirusTotalApiKey"];
 
-VirusTotalDirectoryScannerSettings settings = new();
+Settings settings = new();
 config.Bind(settings);
 
-int quotaPerMinute = settings.QuotaPerMinute;
-int quotaPerDay = settings.QuotaPerDay;
-int quotaPerMonth = settings.QuotaPerMonth;
+int quotaPerMinute = settings.Quota.PerMinute;
+int quotaPerDay = settings.Quota.PerDay;
+int quotaPerMonth = settings.Quota.PerMonth;
 
 Console.WriteLine($"API Key found: {!string.IsNullOrEmpty(apiKey)}");
 Console.WriteLine($"Quota: {quotaPerMinute}/min, {quotaPerDay}/day, {quotaPerMonth}/month");

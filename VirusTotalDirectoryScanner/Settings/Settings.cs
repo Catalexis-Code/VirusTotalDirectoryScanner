@@ -1,12 +1,17 @@
 ﻿namespace VirusTotalDirectoryScanner.Settings;
 
-public sealed class VirusTotalDirectoryScannerSettings
+public sealed class Settings
 {
-	public int QuotaPerMinute { get; set; }
-	public int QuotaPerDay { get; set; }
-	public int QuotaPerMonth { get; set; }
+	public QuotaSettings Quota { get; set; } = new();
 
 	public PathsSettings Paths { get; set; } = new();
+}
+
+public sealed class QuotaSettings
+{
+	public int PerMinute { get; set; }
+	public int PerDay { get; set; }
+	public int PerMonth { get; set; }
 }
 
 public sealed class PathsSettings

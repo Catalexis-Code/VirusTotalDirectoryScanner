@@ -10,7 +10,8 @@ public enum ScanStatus
     PendingLocked,
     Scanning,
     Clean,
-    Compromised
+    Compromised,
+    Failed
 }
 
 public class ScanResult : INotifyPropertyChanged
@@ -18,9 +19,24 @@ public class ScanResult : INotifyPropertyChanged
     private ScanStatus _status;
     private int _detectionCount;
     private string _fileHash = string.Empty;
+    private string _message = string.Empty;
 
     public string FileName { get; set; } = string.Empty;
     public string FullPath { get; set; } = string.Empty;
+    
+    public string Message
+    {
+        get => _message;
+        set
+        {
+            if (_message != value)
+            {
+                _message = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(StatusDisplay));
+            }
+        }
+    }
     
     public ScanStatus Status 
     { 
@@ -84,6 +100,7 @@ public class ScanResult : INotifyPropertyChanged
         ScanStatus.Scanning => "Scanning...",
         ScanStatus.Clean => "Clean",
         ScanStatus.Compromised => $"Compromised ({DetectionCount})",
+        ScanStatus.Failed => $"Failed: {Message}",
         _ => Status.ToString()
     };
 

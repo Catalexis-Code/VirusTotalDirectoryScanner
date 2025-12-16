@@ -12,9 +12,11 @@ public class VirusTotalService
     private readonly Settings.Settings _settings;
     private readonly string _userSettingsPath;
     private readonly RateLimiter _limiter;
+    private readonly string _apiKey;
 
     public VirusTotalService(string apiKey, Settings.Settings settings, string userSettingsPath)
     {
+        _apiKey = apiKey;
         _settings = settings;
         _userSettingsPath = userSettingsPath;
 
@@ -39,7 +41,7 @@ public class VirusTotalService
         _api = RestService.For<IVirusTotalApi>(httpClient);
     }
 
-    public async Task<(ScanResultStatus Status, int DetectionCount, string Hash)> ScanFileAsync(string filePath, CancellationToken ct = default)
+    public async Task<(ScanResultStatus Status, int DetectionCount, string Hash, string? Message)> ScanFileAsync(string filePath, CancellationToken ct = default)
     {
         // 1. Check Quota
         CheckQuota();
@@ -55,7 +57,7 @@ public class VirusTotalService
             if (report.Data != null)
             {
                 var status = DetermineStatus(report.Data.Attributes?.LastAnalysisStats);
-                return (status.Status, status.DetectionCount, hash);
+                return (status.Status, status.DetectionCount, hash, null);
             }
         }
         catch (ApiException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
@@ -66,12 +68,42 @@ public class VirusTotalService
         // 4. Upload File
         await IncrementQuotaAsync(ct);
         
-        // We need to open the file stream. 
-        // Since we already checked for locks in the caller, we hope it's still free.
-        // But we should wrap in try-catch just in case.
-        VirusTotalResponse<AnalysisDescriptor> uploadResult;
-        await using (var stream = File.OpenRead(filePath))
+        long fileSize = new FileInfo(filePath).Length;
+        
+        // Hard limit check (650MB)
+        if (fileSize > 681574400) 
         {
+            return (ScanResultStatus.Failed, 0, hash, "File exceeds 650MB limit.");
+        }
+
+        VirusTotalResponse<AnalysisDescriptor> uploadResult;
+
+        if (fileSize > 33554432) // 32MB
+        {
+            // Large file flow
+            var urlResponse = await _api.GetLargeFileUploadUrl();
+            if (urlResponse.Data == null) 
+                return (ScanResultStatus.Failed, 0, hash, "Could not get upload URL.");
+
+            // Use a temporary HttpClient to upload to the dynamic URL
+            using var uploadClient = new HttpClient();
+            uploadClient.DefaultRequestHeaders.Add("x-apikey", _apiKey);
+            
+            using var content = new MultipartFormDataContent();
+            await using var fileStream = File.OpenRead(filePath);
+            content.Add(new StreamContent(fileStream), "file", Path.GetFileName(filePath));
+            
+            var response = await uploadClient.PostAsync(urlResponse.Data, content, ct);
+            if (!response.IsSuccessStatusCode)
+                return (ScanResultStatus.Failed, 0, hash, $"Upload failed: {response.StatusCode}");
+
+            var json = await response.Content.ReadAsStringAsync(ct);
+            uploadResult = System.Text.Json.JsonSerializer.Deserialize<VirusTotalResponse<AnalysisDescriptor>>(json)!;
+        }
+        else
+        {
+            // Standard flow
+            await using var stream = File.OpenRead(filePath);
             var streamPart = new StreamPart(stream, Path.GetFileName(filePath));
             uploadResult = await _api.UploadFile(streamPart);
         }
@@ -99,7 +131,7 @@ public class VirusTotalService
             if (statusStr == "completed")
             {
                 var status = DetermineStatus(analysis.Data?.Attributes?.Stats);
-                return (status.Status, status.DetectionCount, hash);
+                return (status.Status, status.DetectionCount, hash, null);
             }
         }
     }
@@ -167,5 +199,6 @@ public enum ScanResultStatus
 {
     Clean,
     Compromised,
-    Unknown
+    Unknown,
+    Failed
 }

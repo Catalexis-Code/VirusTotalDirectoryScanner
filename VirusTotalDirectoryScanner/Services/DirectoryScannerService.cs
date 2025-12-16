@@ -144,6 +144,12 @@ public class DirectoryScannerService : IDisposable
                 MoveFile(filePath, _settings.Paths.CompromisedDirectory);
                 Log($"File {fileName} is COMPROMISED. Moved to compromised directory.");
             }
+            else if (scanResult.Status == ScanResultStatus.Failed)
+            {
+                result.Status = ScanStatus.Failed;
+                result.Message = scanResult.Message ?? "Unknown error";
+                Log($"File {fileName} FAILED: {result.Message}");
+            }
             else
             {
                 Log($"File {fileName} status is UNKNOWN.");
@@ -152,7 +158,8 @@ public class DirectoryScannerService : IDisposable
         catch (Exception ex)
         {
             Log($"Error processing {fileName}: {ex.Message}");
-            // Keep as scanning or set to error state if we had one
+            result.Status = ScanStatus.Failed;
+            result.Message = ex.Message;
         }
         
         _onResultUpdated(result);

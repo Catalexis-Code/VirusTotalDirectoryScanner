@@ -82,6 +82,7 @@ public sealed partial class MainWindow : Window
 				existing.Status = result.Status;
                 existing.DetectionCount = result.DetectionCount;
                 existing.FileHash = result.FileHash;
+                existing.Message = result.Message;
 			}
 			else
 			{

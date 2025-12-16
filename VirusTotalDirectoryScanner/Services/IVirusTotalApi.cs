@@ -12,6 +12,9 @@ public interface IVirusTotalApi
     [Post("/files")]
     Task<VirusTotalResponse<AnalysisDescriptor>> UploadFile([AliasAs("file")] StreamPart file);
 
+    [Get("/files/upload_url")]
+    Task<VirusTotalResponse<string>> GetLargeFileUploadUrl();
+
     [Get("/analyses/{id}")]
     Task<VirusTotalResponse<AnalysisObject>> GetAnalysis(string id);
 }

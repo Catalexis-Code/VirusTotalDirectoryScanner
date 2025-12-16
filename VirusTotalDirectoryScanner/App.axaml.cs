@@ -35,6 +35,8 @@ public sealed partial class App : Application
     private void ConfigureServices(IServiceCollection services)
     {
         services.AddSingleton<SettingsService>();
+        services.AddSingleton<IQuotaService, QuotaService>();
+        services.AddSingleton<IFileOperationsService, FileOperationsService>();
         services.AddSingleton<VirusTotalService>();
         services.AddTransient<DirectoryScannerService>();
         services.AddSingleton<Func<DirectoryScannerService>>(sp => () => sp.GetRequiredService<DirectoryScannerService>());

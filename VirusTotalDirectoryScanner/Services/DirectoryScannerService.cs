@@ -10,6 +10,7 @@ public class DirectoryScannerService : IDisposable
 {
     private readonly VirusTotalService _vtService;
     private readonly SettingsService _settingsService;
+    private readonly IFileOperationsService _fileOperationsService;
     
     public event EventHandler<ScanResult>? ScanResultUpdated;
     public event EventHandler<string>? LogMessage;
@@ -24,10 +25,12 @@ public class DirectoryScannerService : IDisposable
 
     public DirectoryScannerService(
         VirusTotalService vtService, 
-        SettingsService settingsService)
+        SettingsService settingsService,
+        IFileOperationsService fileOperationsService)
     {
         _vtService = vtService;
         _settingsService = settingsService;
+        _fileOperationsService = fileOperationsService;
         
         _lockedFileTimer = new Timer(30000); // 30 seconds
         _lockedFileTimer.Elapsed += OnLockedFileTimerElapsed;
@@ -43,11 +46,11 @@ public class DirectoryScannerService : IDisposable
             return;
         }
 
-        if (!Directory.Exists(settings.Paths.ScanDirectory))
+        if (!_fileOperationsService.DirectoryExists(settings.Paths.ScanDirectory))
         {
             try
             {
-                Directory.CreateDirectory(settings.Paths.ScanDirectory);
+                _fileOperationsService.CreateDirectory(settings.Paths.ScanDirectory);
                 LogMessage?.Invoke(this, $"Created scan directory: {settings.Paths.ScanDirectory}");
             }
             catch (Exception ex)
@@ -69,7 +72,7 @@ public class DirectoryScannerService : IDisposable
         {
             try
             {
-                var files = Directory.GetFiles(settings.Paths.ScanDirectory);
+                var files = _fileOperationsService.GetFiles(settings.Paths.ScanDirectory);
                 LogMessage?.Invoke(this, $"Found {files.Length} existing files.");
                 foreach (var file in files)
                 {
@@ -137,7 +140,7 @@ public class DirectoryScannerService : IDisposable
         try
         {
             // 1. Check for lock
-            if (IsFileLocked(filePath))
+            if (_fileOperationsService.IsFileLocked(filePath))
             {
                 Log($"File is locked: {fileName}. Queuing for retry.");
                 result.Status = ScanStatus.PendingLocked;
@@ -205,14 +208,14 @@ public class DirectoryScannerService : IDisposable
 
         foreach (var filePath in _lockedFiles.Keys)
         {
-            if (!File.Exists(filePath))
+            if (!_fileOperationsService.FileExists(filePath))
             {
                 // File gone? Remove from locked list
                 _lockedFiles.TryRemove(filePath, out _);
                 continue;
             }
 
-            if (!IsFileLocked(filePath))
+            if (!_fileOperationsService.IsFileLocked(filePath))
             {
                 // Unlocked! Move back to queue
                 if (_lockedFiles.TryRemove(filePath, out _))
@@ -230,20 +233,6 @@ public class DirectoryScannerService : IDisposable
         }
     }
 
-    private bool IsFileLocked(string filePath)
-    {
-        try
-        {
-            using FileStream stream = File.Open(filePath, FileMode.Open, FileAccess.Read, FileShare.None);
-            stream.Close();
-        }
-        catch (IOException)
-        {
-            return true;
-        }
-        return false;
-    }
-
     private void MoveFile(string sourcePath, string? destDir)
     {
         if (string.IsNullOrWhiteSpace(destDir))
@@ -252,21 +241,21 @@ public class DirectoryScannerService : IDisposable
             return;
         }
 
-        if (!Directory.Exists(destDir))
+        if (!_fileOperationsService.DirectoryExists(destDir))
         {
-            Directory.CreateDirectory(destDir);
+            _fileOperationsService.CreateDirectory(destDir);
         }
 
         string destPath = Path.Combine(destDir, Path.GetFileName(sourcePath));
         
         // Handle overwrite or rename? Assuming overwrite for now or unique name
-        if (File.Exists(destPath))
+        if (_fileOperationsService.FileExists(destPath))
         {
             string timestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
             destPath = Path.Combine(destDir, $"{Path.GetFileNameWithoutExtension(sourcePath)}_{timestamp}{Path.GetExtension(sourcePath)}");
         }
 
-        File.Move(sourcePath, destPath);
+        _fileOperationsService.MoveFile(sourcePath, destPath);
     }
 
     private void Log(string message)
@@ -279,9 +268,9 @@ public class DirectoryScannerService : IDisposable
             if (!string.IsNullOrWhiteSpace(settings.Paths.LogFilePath))
             {
                 string logDir = Path.GetDirectoryName(settings.Paths.LogFilePath)!;
-                if (!Directory.Exists(logDir)) Directory.CreateDirectory(logDir);
+                if (!_fileOperationsService.DirectoryExists(logDir)) _fileOperationsService.CreateDirectory(logDir);
                 
-                File.AppendAllText(settings.Paths.LogFilePath, $"{DateTime.Now}: {message}{Environment.NewLine}");
+                _fileOperationsService.AppendAllText(settings.Paths.LogFilePath, $"{DateTime.Now}: {message}{Environment.NewLine}");
             }
         }
         catch

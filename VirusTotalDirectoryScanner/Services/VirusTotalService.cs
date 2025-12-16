@@ -10,11 +10,13 @@ public class VirusTotalService
 {
     private readonly IVirusTotalApi _api;
     private readonly SettingsService _settingsService;
+    private readonly IQuotaService _quotaService;
     private readonly RateLimiter _limiter;
 
-    public VirusTotalService(SettingsService settingsService)
+    public VirusTotalService(SettingsService settingsService, IQuotaService quotaService)
     {
         _settingsService = settingsService;
+        _quotaService = quotaService;
         var settings = _settingsService.CurrentSettings;
         var apiKey = _settingsService.ApiKey;
 
@@ -47,7 +49,7 @@ public class VirusTotalService
     public async Task<(ScanResultStatus Status, int DetectionCount, string Hash, string? Message)> ScanFileAsync(string filePath, CancellationToken ct = default)
     {
         // 1. Check Quota
-        CheckQuota();
+        _quotaService.CheckQuota();
 
         // 2. Calculate Hash
         string hash = await CalculateSha256Async(filePath, ct);
@@ -55,7 +57,7 @@ public class VirusTotalService
         // 3. Check if file exists (GetFileReport)
         try 
         {
-            await IncrementQuotaAsync(ct);
+            await _quotaService.IncrementQuotaAsync(ct);
             var report = await _api.GetFileReport(hash);
             if (report.Data != null)
             {
@@ -69,7 +71,7 @@ public class VirusTotalService
         }
 
         // 4. Upload File
-        await IncrementQuotaAsync(ct);
+        await _quotaService.IncrementQuotaAsync(ct);
         
         long fileSize = new FileInfo(filePath).Length;
         
@@ -126,7 +128,7 @@ public class VirusTotalService
             // Polling doesn't usually count towards quota in some APIs, but for VT it likely does as a request.
             // The user prompt says "Use the public API within its quota... 4 per minute".
             // So polling calls count.
-            await IncrementQuotaAsync(ct);
+            await _quotaService.IncrementQuotaAsync(ct);
 
             var analysis = await _api.GetAnalysis(analysisId);
             string? statusStr = analysis.Data?.Attributes?.Status;
@@ -152,51 +154,6 @@ public class VirusTotalService
         await using var stream = File.OpenRead(filePath);
         byte[] hashBytes = await sha256.ComputeHashAsync(stream, ct);
         return BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
-    }
-
-    private void CheckQuota()
-    {
-        DateTime today = DateTime.Today;
-        DateTime now = DateTime.Now;
-        var settings = _settingsService.CurrentSettings;
-
-        // Reset counters if needed
-        if (settings.Quota.LastUsedDate.Date != today)
-        {
-            settings.Quota.UsedToday = 0;
-            settings.Quota.LastUsedDate = now;
-            
-            if (settings.Quota.LastUsedDate.Month != today.Month)
-            {
-                settings.Quota.UsedThisMonth = 0;
-            }
-            
-            // We don't await save here to avoid async void/task complexity in sync check, 
-            // but we will save on increment.
-        }
-
-        if (settings.Quota.PerDay > 0 && settings.Quota.UsedToday >= settings.Quota.PerDay)
-        {
-            throw new Exception($"Daily quota exceeded ({settings.Quota.UsedToday}/{settings.Quota.PerDay})");
-        }
-
-        if (settings.Quota.PerMonth > 0 && settings.Quota.UsedThisMonth >= settings.Quota.PerMonth)
-        {
-            throw new Exception($"Monthly quota exceeded ({settings.Quota.UsedThisMonth}/{settings.Quota.PerMonth})");
-        }
-    }
-
-    private async Task IncrementQuotaAsync(CancellationToken ct)
-    {
-        // Re-check quota before incrementing to be safe
-        CheckQuota();
-
-        var settings = _settingsService.CurrentSettings;
-        settings.Quota.UsedToday++;
-        settings.Quota.UsedThisMonth++;
-        settings.Quota.LastUsedDate = DateTime.Now;
-
-        await UserSettingsStore.SaveAsync(_settingsService.UserSettingsFilePath, settings, ct);
     }
 }
 

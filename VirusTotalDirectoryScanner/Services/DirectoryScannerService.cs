@@ -1,6 +1,8 @@
 using System.Collections.Concurrent;
+using System.Timers;
 using VirusTotalDirectoryScanner.Models;
 using VirusTotalDirectoryScanner.Settings;
+using Timer = System.Timers.Timer;
 
 namespace VirusTotalDirectoryScanner.Services;
 
@@ -11,9 +13,12 @@ public class DirectoryScannerService : IDisposable
     private readonly Action<ScanResult> _onResultUpdated;
     private readonly Action<string> _onLog;
     private FileSystemWatcher? _watcher;
-    private readonly ConcurrentQueue<string> _fileQueue = new();
+    private readonly ConcurrentStack<string> _fileQueue = new();
     private readonly CancellationTokenSource _cts = new();
     private Task? _processingTask;
+    
+    private readonly ConcurrentDictionary<string, byte> _lockedFiles = new();
+    private readonly Timer _lockedFileTimer;
 
     public DirectoryScannerService(
         VirusTotalService vtService, 
@@ -25,6 +30,10 @@ public class DirectoryScannerService : IDisposable
         _settings = settings;
         _onResultUpdated = onResultUpdated;
         _onLog = onLog;
+        
+        _lockedFileTimer = new Timer(30000); // 30 seconds
+        _lockedFileTimer.Elapsed += OnLockedFileTimerElapsed;
+        _lockedFileTimer.AutoReset = true;
     }
 
     public void Start()
@@ -57,10 +66,22 @@ public class DirectoryScannerService : IDisposable
         _onLog($"Started monitoring {_settings.Paths.ScanDirectory}");
         
         // Process existing files
-        foreach (var file in Directory.GetFiles(_settings.Paths.ScanDirectory))
+        Task.Run(() => 
         {
-            EnqueueFile(file);
-        }
+            try
+            {
+                var files = Directory.GetFiles(_settings.Paths.ScanDirectory);
+                _onLog($"Found {files.Length} existing files.");
+                foreach (var file in files)
+                {
+                    EnqueueFile(file);
+                }
+            }
+            catch (Exception ex)
+            {
+                _onLog($"Error detecting existing files: {ex.Message}");
+            }
+        });
     }
 
     private void OnFileCreated(object sender, FileSystemEventArgs e)
@@ -76,7 +97,7 @@ public class DirectoryScannerService : IDisposable
             return;
         }
 
-        _fileQueue.Enqueue(fullPath);
+        _fileQueue.Push(fullPath);
         
         // Notify UI of pending file
         _onResultUpdated(new ScanResult 
@@ -91,7 +112,7 @@ public class DirectoryScannerService : IDisposable
     {
         while (!_cts.Token.IsCancellationRequested)
         {
-            if (_fileQueue.TryDequeue(out string? filePath))
+            if (_fileQueue.TryPop(out string? filePath))
             {
                 await ProcessFileAsync(filePath);
             }
@@ -118,9 +139,16 @@ public class DirectoryScannerService : IDisposable
             // 1. Check for lock
             if (IsFileLocked(filePath))
             {
-                Log($"File is locked: {fileName}. Skipping.");
+                Log($"File is locked: {fileName}. Queuing for retry.");
                 result.Status = ScanStatus.PendingLocked;
                 _onResultUpdated(result);
+                
+                _lockedFiles.TryAdd(filePath, 0);
+                if (!_lockedFileTimer.Enabled)
+                {
+                    _lockedFileTimer.Start();
+                    Log("Locked file timer started.");
+                }
                 return;
             }
 
@@ -163,6 +191,42 @@ public class DirectoryScannerService : IDisposable
         }
         
         _onResultUpdated(result);
+    }
+
+    private void OnLockedFileTimerElapsed(object? sender, ElapsedEventArgs e)
+    {
+        if (_lockedFiles.IsEmpty)
+        {
+            _lockedFileTimer.Stop();
+            Log("Locked file timer stopped (no locked files).");
+            return;
+        }
+
+        foreach (var filePath in _lockedFiles.Keys)
+        {
+            if (!File.Exists(filePath))
+            {
+                // File gone? Remove from locked list
+                _lockedFiles.TryRemove(filePath, out _);
+                continue;
+            }
+
+            if (!IsFileLocked(filePath))
+            {
+                // Unlocked! Move back to queue
+                if (_lockedFiles.TryRemove(filePath, out _))
+                {
+                    Log($"File unlocked: {Path.GetFileName(filePath)}. Re-queuing.");
+                    _fileQueue.Push(filePath);
+                }
+            }
+        }
+        
+        if (_lockedFiles.IsEmpty)
+        {
+            _lockedFileTimer.Stop();
+            Log("Locked file timer stopped.");
+        }
     }
 
     private bool IsFileLocked(string filePath)
@@ -228,5 +292,7 @@ public class DirectoryScannerService : IDisposable
     {
         _cts.Cancel();
         _watcher?.Dispose();
+        _lockedFileTimer.Stop();
+        _lockedFileTimer.Dispose();
     }
 }

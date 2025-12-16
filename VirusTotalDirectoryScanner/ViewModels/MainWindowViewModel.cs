@@ -17,10 +17,16 @@ public partial class MainWindowViewModel : ObservableObject
     private DirectoryScannerService? _scannerService;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsMonitoring))]
     private string _statusText = "Ready";
 
-    public bool IsMonitoring => StatusText == "Monitoring:";
+    [ObservableProperty]
+    private bool _isMonitoring;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasError))]
+    private string _errorMessage = string.Empty;
+
+    public bool HasError => !string.IsNullOrEmpty(ErrorMessage);
 
     [ObservableProperty]
     private string _scanDirectoryName = "None";
@@ -86,6 +92,7 @@ public partial class MainWindowViewModel : ObservableObject
     private void StartScanning()
     {
         StopScanning();
+        ErrorMessage = string.Empty;
 
         try
         {
@@ -95,7 +102,9 @@ public partial class MainWindowViewModel : ObservableObject
 
             if (string.IsNullOrWhiteSpace(_settingsService.ApiKey) || string.IsNullOrWhiteSpace(settings.Paths.ScanDirectory))
             {
-                StatusText = "Configuration missing. Please check settings.";
+                StatusText = "Configuration missing";
+                ErrorMessage = "Configuration missing. Please check settings.";
+                IsMonitoring = false;
                 return;
             }
 
@@ -115,15 +124,19 @@ public partial class MainWindowViewModel : ObservableObject
             
             _scannerService.Start();
             StatusText = "Monitoring:";
+            IsMonitoring = true;
         }
         catch (Exception ex)
         {
-            StatusText = $"Error starting scanner: {ex.Message}";
+            StatusText = "Stopped";
+            ErrorMessage = $"Error starting scanner: {ex.Message}";
+            IsMonitoring = false;
         }
     }
 
     private void StopScanning()
     {
+        IsMonitoring = false;
         if (_scannerService != null)
         {
             _scannerService.ScanResultUpdated -= OnScanResultUpdated;
@@ -158,7 +171,7 @@ public partial class MainWindowViewModel : ObservableObject
         {
             if (message.StartsWith("Error") || message.Contains("exceeded"))
             {
-                StatusText = message;
+                ErrorMessage = message;
             }
         });
     }
@@ -167,6 +180,7 @@ public partial class MainWindowViewModel : ObservableObject
     private void Clear()
     {
         ScanResults.Clear();
+        ErrorMessage = string.Empty;
     }
 
     [RelayCommand]
@@ -180,7 +194,7 @@ public partial class MainWindowViewModel : ObservableObject
             }
             else
             {
-                StatusText = "Report URL not available (missing hash).";
+                ErrorMessage = "Report URL not available (missing hash).";
             }
         }
     }
@@ -197,7 +211,7 @@ public partial class MainWindowViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            StatusText = $"Failed to open link: {ex.Message}";
+            ErrorMessage = $"Failed to open link: {ex.Message}";
         }
     }
 }

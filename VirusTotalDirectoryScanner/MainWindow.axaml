@@ -9,7 +9,7 @@
         Width="520"
         Height="600"
         x:Name="RootWindow">
-  <Grid Margin="16" RowDefinitions="Auto,Auto,*" RowSpacing="12">
+  <Grid Margin="16" RowDefinitions="Auto,Auto,*,Auto" RowSpacing="12">
     <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
       <TextBlock FontSize="20" FontWeight="SemiBold" Text="VirusTotalDirectoryScanner" />
       <Button Grid.Column="1" Content="Settings…" Command="{Binding OpenSettingsCommand}" />
@@ -20,7 +20,7 @@
     <Grid Grid.Row="2" RowDefinitions="Auto, *">
       <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,10">
         <StackPanel Spacing="8">
-          <TextBlock FontWeight="SemiBold" Text="Status" />
+          <TextBlock FontWeight="SemiBold" Text="Monitoring" />
           <StackPanel Orientation="Horizontal" Spacing="8">
             <TextBlock Text="{Binding StatusText}" VerticalAlignment="Center" />
             <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding IsMonitoring}">
@@ -73,5 +73,13 @@
         </DataGrid.Columns>
       </DataGrid>
     </Grid>
+
+    <!-- Error Section -->
+    <Border Grid.Row="3" BorderBrush="#FFCDD2" Background="#FFEBEE" BorderThickness="1" CornerRadius="4" Padding="8" IsVisible="{Binding HasError}">
+      <StackPanel Orientation="Horizontal" Spacing="8">
+        <PathIcon Data="M12,2C17.53,2 22,6.47 22,12C22,17.53 17.53,22 12,22C6.47,22 2,17.53 2,12C2,6.47 6.47,2 12,2M15.59,7L12,10.59L8.41,7L7,8.41L10.59,12L7,15.59L8.41,17L12,13.41L15.59,17L17,15.59L13.41,12L17,8.41L15.59,7Z" Foreground="#D32F2F" Width="20" Height="20" VerticalAlignment="Top" />
+        <TextBlock Text="{Binding ErrorMessage}" Foreground="#D32F2F" VerticalAlignment="Center" TextWrapping="Wrap" />
+      </StackPanel>
+    </Border>
   </Grid>
 </Window>

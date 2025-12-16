@@ -1,4 +1,7 @@
 using System.IO;
+using System.Security.Cryptography;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace VirusTotalDirectoryScanner.Services;
 
@@ -43,6 +46,11 @@ public class FileOperationsService : IFileOperationsService
         File.Move(sourceFileName, destFileName);
     }
 
+    public void DeleteFile(string path)
+    {
+        File.Delete(path);
+    }
+
     public void AppendAllText(string path, string contents)
     {
         File.AppendAllText(path, contents);
@@ -56,5 +64,13 @@ public class FileOperationsService : IFileOperationsService
     public long GetFileLength(string path)
     {
         return new FileInfo(path).Length;
+    }
+
+    public async Task<string> CalculateSha256Async(string filePath, CancellationToken ct = default)
+    {
+        using var sha256 = SHA256.Create();
+        await using var stream = OpenRead(filePath);
+        byte[] hashBytes = await sha256.ComputeHashAsync(stream, ct);
+        return BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
     }
 }

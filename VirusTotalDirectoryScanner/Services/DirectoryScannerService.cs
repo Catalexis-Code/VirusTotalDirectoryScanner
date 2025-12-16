@@ -170,13 +170,13 @@ public class DirectoryScannerService : IDisposable
             if (scanResult.Status == ScanResultStatus.Clean)
             {
                 result.Status = ScanStatus.Clean;
-                MoveFile(filePath, settings.Paths.CleanDirectory);
+                await MoveFileAsync(filePath, settings.Paths.CleanDirectory, _cts.Token);
                 Log($"File {fileName} is CLEAN. Moved to clean directory.");
             }
             else if (scanResult.Status == ScanResultStatus.Compromised)
             {
                 result.Status = ScanStatus.Compromised;
-                MoveFile(filePath, settings.Paths.CompromisedDirectory);
+                await MoveFileAsync(filePath, settings.Paths.CompromisedDirectory, _cts.Token);
                 Log($"File {fileName} is COMPROMISED. Moved to compromised directory.");
             }
             else if (scanResult.Status == ScanResultStatus.Failed)
@@ -236,7 +236,7 @@ public class DirectoryScannerService : IDisposable
         }
     }
 
-    private void MoveFile(string sourcePath, string? destDir)
+    private async Task MoveFileAsync(string sourcePath, string? destDir, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(destDir))
         {
@@ -251,11 +251,22 @@ public class DirectoryScannerService : IDisposable
 
         string destPath = Path.Combine(destDir, Path.GetFileName(sourcePath));
         
-        // Handle overwrite or rename? Assuming overwrite for now or unique name
         if (_fileOperationsService.FileExists(destPath))
         {
-            string timestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
-            destPath = Path.Combine(destDir, $"{Path.GetFileNameWithoutExtension(sourcePath)}_{timestamp}{Path.GetExtension(sourcePath)}");
+            string sourceHash = await _fileOperationsService.CalculateSha256Async(sourcePath, ct);
+            string destHash = await _fileOperationsService.CalculateSha256Async(destPath, ct);
+
+            if (sourceHash == destHash)
+            {
+                Log($"File {Path.GetFileName(sourcePath)} already exists in destination with same checksum. Overwriting.");
+                _fileOperationsService.DeleteFile(destPath);
+            }
+            else
+            {
+                string timestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
+                destPath = Path.Combine(destDir, $"{Path.GetFileNameWithoutExtension(sourcePath)}_{timestamp}{Path.GetExtension(sourcePath)}");
+                Log($"File {Path.GetFileName(sourcePath)} already exists in destination with DIFFERENT checksum. Renaming to {Path.GetFileName(destPath)}.");
+            }
         }
 
         _fileOperationsService.MoveFile(sourcePath, destPath);

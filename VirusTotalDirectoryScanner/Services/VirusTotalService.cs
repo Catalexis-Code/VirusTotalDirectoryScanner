@@ -1,4 +1,3 @@
-using System.Security.Cryptography;
 using System.Threading.RateLimiting;
 using System.Net.Http;
 using Refit;
@@ -35,7 +34,7 @@ public class VirusTotalService : IVirusTotalService
         _quotaService.CheckQuota();
 
         // 2. Calculate Hash
-        string hash = await CalculateSha256Async(filePath, ct);
+        string hash = await _fileOperationsService.CalculateSha256Async(filePath, ct);
 
         // 3. Check if file exists (GetFileReport)
         try 
@@ -128,14 +127,6 @@ public class VirusTotalService : IVirusTotalService
         if (stats == null) return (ScanResultStatus.Unknown, 0);
         if (stats.Malicious > 0) return (ScanResultStatus.Compromised, stats.Malicious);
         return (ScanResultStatus.Clean, 0);
-    }
-
-    private async Task<string> CalculateSha256Async(string filePath, CancellationToken ct)
-    {
-        using var sha256 = SHA256.Create();
-        await using var stream = _fileOperationsService.OpenRead(filePath);
-        byte[] hashBytes = await sha256.ComputeHashAsync(stream, ct);
-        return BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
     }
 }
 

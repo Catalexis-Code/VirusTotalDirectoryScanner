@@ -111,4 +111,70 @@ public class DirectoryScannerServiceTests
         // Wait, DirectoryScannerService calls MoveFile private method which calls File.Move?
         // Let's check DirectoryScannerService source for MoveFile.
     }
+
+    [Fact]
+    public async Task ProcessFile_ShouldOverwrite_WhenChecksumsMatch()
+    {
+        // Arrange
+        var fileName = "test.exe";
+        var sourcePath = Path.Combine(_settings.Paths.ScanDirectory, fileName);
+        var destPath = Path.Combine(_settings.Paths.CleanDirectory, fileName);
+        
+        _fileOpsMock.Setup(f => f.GetFiles(_settings.Paths.ScanDirectory)).Returns(new[] { sourcePath });
+        _fileOpsMock.Setup(f => f.IsFileLocked(sourcePath)).Returns(false);
+        _fileOpsMock.Setup(f => f.DirectoryExists(_settings.Paths.CleanDirectory)).Returns(true);
+        
+        // Destination file exists
+        _fileOpsMock.Setup(f => f.FileExists(destPath)).Returns(true);
+        
+        // Checksums match
+        _fileOpsMock.Setup(f => f.CalculateSha256Async(sourcePath, It.IsAny<CancellationToken>())).ReturnsAsync("hash1");
+        _fileOpsMock.Setup(f => f.CalculateSha256Async(destPath, It.IsAny<CancellationToken>())).ReturnsAsync("hash1");
+
+        _vtServiceMock.Setup(v => v.ScanFileAsync(sourcePath, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((ScanResultStatus.Clean, 0, "hash1", "Clean"));
+
+        // Act
+        _sut.Start();
+        await Task.Delay(2000); // Wait for processing
+
+        // Assert
+        // Should delete existing file
+        _fileOpsMock.Verify(f => f.DeleteFile(destPath), Times.Once);
+        // Should move to original name
+        _fileOpsMock.Verify(f => f.MoveFile(sourcePath, destPath), Times.Once);
+    }
+
+    [Fact]
+    public async Task ProcessFile_ShouldRename_WhenChecksumsDiffer()
+    {
+        // Arrange
+        var fileName = "test.exe";
+        var sourcePath = Path.Combine(_settings.Paths.ScanDirectory, fileName);
+        var destPath = Path.Combine(_settings.Paths.CleanDirectory, fileName);
+        
+        _fileOpsMock.Setup(f => f.GetFiles(_settings.Paths.ScanDirectory)).Returns(new[] { sourcePath });
+        _fileOpsMock.Setup(f => f.IsFileLocked(sourcePath)).Returns(false);
+        _fileOpsMock.Setup(f => f.DirectoryExists(_settings.Paths.CleanDirectory)).Returns(true);
+        
+        // Destination file exists
+        _fileOpsMock.Setup(f => f.FileExists(destPath)).Returns(true);
+        
+        // Checksums differ
+        _fileOpsMock.Setup(f => f.CalculateSha256Async(sourcePath, It.IsAny<CancellationToken>())).ReturnsAsync("hash1");
+        _fileOpsMock.Setup(f => f.CalculateSha256Async(destPath, It.IsAny<CancellationToken>())).ReturnsAsync("hash2");
+
+        _vtServiceMock.Setup(v => v.ScanFileAsync(sourcePath, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((ScanResultStatus.Clean, 0, "hash1", "Clean"));
+
+        // Act
+        _sut.Start();
+        await Task.Delay(2000); // Wait for processing
+
+        // Assert
+        // Should NOT delete existing file
+        _fileOpsMock.Verify(f => f.DeleteFile(destPath), Times.Never);
+        // Should move to new name (timestamped)
+        _fileOpsMock.Verify(f => f.MoveFile(sourcePath, It.Is<string>(p => p != destPath && p.StartsWith(Path.Combine(_settings.Paths.CleanDirectory, "test_")))), Times.Once);
+    }
 }

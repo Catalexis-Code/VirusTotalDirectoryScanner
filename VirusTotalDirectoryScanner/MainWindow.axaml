@@ -50,7 +50,14 @@
             </Setter>
           </Style>
           <Style Selector="DataGridCell.FileNameCell" x:DataType="models:ScanResult">
-            <Setter Property="AutomationProperties.Name" Value="{Binding FileName}" />
+            <Setter Property="AutomationProperties.Name">
+              <Setter.Value>
+                <MultiBinding StringFormat="{}{0}, {1}">
+                  <Binding Path="StatusDisplay" />
+                  <Binding Path="FileName" />
+                </MultiBinding>
+              </Setter.Value>
+            </Setter>
           </Style>
           <Style Selector="DataGridCell.StatusCell" x:DataType="models:ScanResult">
             <Setter Property="AutomationProperties.Name" Value="{Binding StatusDisplay}" />

@@ -9,17 +9,34 @@
     <TextBlock FontSize="20" FontWeight="SemiBold" Text="Settings" />
 
     <TabControl Grid.Row="1">
-      <TabItem Header="VirusTotal">
-        <StackPanel Margin="8" Spacing="8">
-          <TextBlock Text="API Key (stored in User Secrets)" FontWeight="SemiBold" />
-          <Grid ColumnDefinitions="*,Auto">
-            <TextBox x:Name="ApiKeyTextBox" Grid.Column="0" Text="{Binding ApiKey, Mode=TwoWay}" PasswordChar="{Binding ApiKeyPasswordChar}" Watermark="Enter your VirusTotal API key" />
-            <Button Grid.Column="1" Margin="4,0,0,0" Click="ToggleApiKey_Click" Content="👁" ToolTip.Tip="Toggle API Key Visibility" />
-          </Grid>
+      <TabItem Header="VirusTotal API">
+        <ScrollViewer>
+          <StackPanel Margin="8" Spacing="8">
+            <TextBlock Text="API Key (stored in User Secrets)" FontWeight="SemiBold" />
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBox x:Name="ApiKeyTextBox" Grid.Column="0" Text="{Binding ApiKey, Mode=TwoWay}" PasswordChar="{Binding ApiKeyPasswordChar}" Watermark="Enter your VirusTotal API key" />
+              <Button Grid.Column="1" Margin="4,0,0,0" Click="ToggleApiKey_Click" Content="👁" ToolTip.Tip="Toggle API Key Visibility" />
+            </Grid>
 
-          <TextBlock Text="User Secrets file" FontWeight="SemiBold" Margin="0,12,0,0" />
-          <TextBox Text="{Binding UserSecretsFilePath}" IsReadOnly="True" />
-        </StackPanel>
+            <Separator Margin="0,12" />
+
+            <TextBlock Text="Requests per minute" FontWeight="SemiBold" />
+            <NumericUpDown Value="{Binding QuotaPerMinute, Mode=TwoWay}" Minimum="0" />
+
+            <TextBlock Text="Requests per day" FontWeight="SemiBold" Margin="0,8,0,0" />
+            <NumericUpDown Value="{Binding QuotaPerDay, Mode=TwoWay}" Minimum="0" />
+
+            <TextBlock Text="Requests per month" FontWeight="SemiBold" Margin="0,8,0,0" />
+            <NumericUpDown Value="{Binding QuotaPerMonth, Mode=TwoWay}" Minimum="0" />
+
+            <TextBlock Text="These values are stored in your user settings file." Margin="0,12,0,0" />
+
+            <Separator Margin="0,12" />
+
+            <TextBlock Text="User Secrets file" FontWeight="SemiBold" Margin="0,12,0,0" />
+            <TextBox Text="{Binding UserSecretsFilePath}" IsReadOnly="True" />
+          </StackPanel>
+        </ScrollViewer>
       </TabItem>
 
       <TabItem Header="Paths">
@@ -41,21 +58,6 @@
             <TextBox Text="{Binding UserSettingsFilePath}" IsReadOnly="True" />
           </StackPanel>
         </ScrollViewer>
-      </TabItem>
-
-      <TabItem Header="Quota">
-        <StackPanel Margin="8" Spacing="8">
-          <TextBlock Text="Requests per minute" FontWeight="SemiBold" />
-          <NumericUpDown Value="{Binding QuotaPerMinute, Mode=TwoWay}" Minimum="0" />
-
-          <TextBlock Text="Requests per day" FontWeight="SemiBold" Margin="0,8,0,0" />
-          <NumericUpDown Value="{Binding QuotaPerDay, Mode=TwoWay}" Minimum="0" />
-
-          <TextBlock Text="Requests per month" FontWeight="SemiBold" Margin="0,8,0,0" />
-          <NumericUpDown Value="{Binding QuotaPerMonth, Mode=TwoWay}" Minimum="0" />
-
-          <TextBlock Text="These values are stored in your user settings file." Margin="0,12,0,0" />
-        </StackPanel>
       </TabItem>
     </TabControl>
 

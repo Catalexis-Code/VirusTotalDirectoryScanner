@@ -8,4 +8,5 @@ public interface ISettingsService
     string? ApiKey { get; }
     string UserSettingsFilePath { get; }
     void Load();
+    Task SaveAsync(Settings.Settings settings);
 }

@@ -2,13 +2,18 @@ using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
 using VirusTotalDirectoryScanner.Settings;
 using VirusTotalDirectoryScanner.ViewModels;
+using VirusTotalDirectoryScanner.Services;
+using Avalonia.Platform.Storage;
 
 namespace VirusTotalDirectoryScanner;
 
 public sealed partial class MainWindow : Window
 {
-    public MainWindow()
+    private readonly ISettingsService _settingsService;
+
+    public MainWindow(ISettingsService settingsService)
     {
+        _settingsService = settingsService;
         InitializeComponent();
         Opened += (s, e) => 
         {
@@ -28,6 +33,30 @@ public sealed partial class MainWindow : Window
         if (DataContext is MainWindowViewModel vm)
         {
             vm.OpenSettingsRequested += Vm_OpenSettingsRequested;
+            vm.RequestDirectorySelect += Vm_RequestDirectorySelect;
+        }
+    }
+
+    private async void Vm_RequestDirectorySelect(object? sender, EventArgs e)
+    {
+        if (DataContext is MainWindowViewModel vm)
+        {
+            var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+            {
+                Title = "Select Folder to Monitor",
+                AllowMultiple = false
+            });
+
+            if (folders.Count > 0)
+            {
+                var path = folders[0].Path.LocalPath;
+                
+                var settings = _settingsService.CurrentSettings;
+                settings.Paths.ScanDirectory = path;
+                await _settingsService.SaveAsync(settings);
+                
+                vm.OnSettingsSaved();
+            }
         }
     }
 

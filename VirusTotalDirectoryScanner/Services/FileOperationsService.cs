@@ -1,4 +1,5 @@
 using System.IO;
+using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
@@ -72,5 +73,18 @@ public class FileOperationsService : IFileOperationsService
         await using var stream = OpenRead(filePath);
         byte[] hashBytes = await sha256.ComputeHashAsync(stream, ct);
         return BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
+    }
+
+    public void OpenDirectoryInExplorer(string path)
+    {
+        if (Directory.Exists(path))
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = path,
+                UseShellExecute = true,
+                Verb = "open"
+            });
+        }
     }
 }

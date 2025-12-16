@@ -41,7 +41,8 @@ public class MainWindowViewModelTests
 
         _sut = new MainWindowViewModel(
             () => scannerService,
-            _settingsServiceMock.Object);
+            _settingsServiceMock.Object,
+            _fileOpsMock.Object);
     }
 
     [Fact]

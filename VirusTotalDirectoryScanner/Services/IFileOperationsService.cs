@@ -13,4 +13,5 @@ public interface IFileOperationsService
     Stream OpenRead(string path);
     long GetFileLength(string path);
     Task<string> CalculateSha256Async(string filePath, CancellationToken ct = default);
+    void OpenDirectoryInExplorer(string path);
 }

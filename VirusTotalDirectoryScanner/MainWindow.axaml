@@ -21,7 +21,18 @@
       <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,10">
         <StackPanel Spacing="8">
           <TextBlock FontWeight="SemiBold" Text="Status" />
-          <TextBlock Text="{Binding StatusText}" />
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <TextBlock Text="{Binding StatusText}" VerticalAlignment="Center" />
+            <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding IsMonitoring}">
+              <TextBlock Text="{Binding ScanDirectoryName}" ToolTip.Tip="{Binding ScanDirectoryPath}" FontWeight="Bold" VerticalAlignment="Center" />
+              <Button Command="{Binding BrowseDirectoryCommand}" ToolTip.Tip="Change Directory" Padding="4" Background="Transparent">
+                <PathIcon Data="M10,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V8C22,6.89 21.1,6 20,6H12L10,4Z" Width="16" Height="16" />
+              </Button>
+              <Button Command="{Binding OpenDirectoryCommand}" ToolTip.Tip="Open in Explorer" Padding="4" Background="Transparent">
+                <PathIcon Data="M14,3V5H17.59L7.76,14.83L9.17,16.24L19,6.41V10H21V3M19,19H5V5H12V3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V12H19V19Z" Width="16" Height="16" />
+              </Button>
+            </StackPanel>
+          </StackPanel>
         </StackPanel>
         <Button Grid.Column="1" Content="Clear" Command="{Binding ClearCommand}" VerticalAlignment="Bottom" />
       </Grid>

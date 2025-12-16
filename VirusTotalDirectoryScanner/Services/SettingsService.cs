@@ -20,4 +20,10 @@ public class SettingsService : ISettingsService
         CurrentSettings = AppConfiguration.GetAppSettings(config);
         ApiKey = AppConfiguration.GetVirusTotalApiKey(config);
     }
+
+    public async Task SaveAsync(Settings.Settings settings)
+    {
+        await UserSettingsStore.SaveAsync(UserSettingsFilePath, settings);
+        CurrentSettings = settings;
+    }
 }

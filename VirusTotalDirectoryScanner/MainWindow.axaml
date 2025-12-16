@@ -1,0 +1,11 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="VirusTotalDirectoryScanner.MainWindow"
+        Title="VirusTotalDirectoryScanner"
+        Width="520"
+        Height="200">
+  <StackPanel Margin="16" Spacing="8">
+    <TextBlock FontSize="18" Text="VirusTotalDirectoryScanner" />
+    <TextBlock x:Name="StatusText" Text="Loading configuration…" />
+  </StackPanel>
+</Window>

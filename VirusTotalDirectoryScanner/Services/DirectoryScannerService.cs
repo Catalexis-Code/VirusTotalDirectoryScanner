@@ -8,14 +8,15 @@ namespace VirusTotalDirectoryScanner.Services;
 
 public class DirectoryScannerService : IDisposable
 {
-    private readonly VirusTotalService _vtService;
-    private readonly SettingsService _settingsService;
+    private readonly IVirusTotalService _vtService;
+    private readonly ISettingsService _settingsService;
     private readonly IFileOperationsService _fileOperationsService;
+    private readonly IDirectoryWatcherFactory _watcherFactory;
     
     public event EventHandler<ScanResult>? ScanResultUpdated;
     public event EventHandler<string>? LogMessage;
 
-    private FileSystemWatcher? _watcher;
+    private IDirectoryWatcher? _watcher;
     private readonly ConcurrentQueue<string> _fileQueue = new();
     private readonly CancellationTokenSource _cts = new();
     private Task? _processingTask;
@@ -24,13 +25,15 @@ public class DirectoryScannerService : IDisposable
     private readonly Timer _lockedFileTimer;
 
     public DirectoryScannerService(
-        VirusTotalService vtService, 
-        SettingsService settingsService,
-        IFileOperationsService fileOperationsService)
+        IVirusTotalService vtService, 
+        ISettingsService settingsService,
+        IFileOperationsService fileOperationsService,
+        IDirectoryWatcherFactory watcherFactory)
     {
         _vtService = vtService;
         _settingsService = settingsService;
         _fileOperationsService = fileOperationsService;
+        _watcherFactory = watcherFactory;
         
         _lockedFileTimer = new Timer(30000); // 30 seconds
         _lockedFileTimer.Elapsed += OnLockedFileTimerElapsed;
@@ -60,7 +63,7 @@ public class DirectoryScannerService : IDisposable
             }
         }
 
-        _watcher = new FileSystemWatcher(settings.Paths.ScanDirectory);
+        _watcher = _watcherFactory.Create(settings.Paths.ScanDirectory);
         _watcher.Created += OnFileCreated;
         _watcher.EnableRaisingEvents = true;
 

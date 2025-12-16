@@ -3,7 +3,7 @@ using VirusTotalDirectoryScanner.Settings;
 
 namespace VirusTotalDirectoryScanner.Services;
 
-public class SettingsService
+public class SettingsService : ISettingsService
 {
     public Settings.Settings CurrentSettings { get; private set; } = new();
     public string? ApiKey { get; private set; }

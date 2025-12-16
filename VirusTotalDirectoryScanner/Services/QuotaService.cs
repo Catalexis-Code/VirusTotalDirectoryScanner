@@ -7,9 +7,9 @@ namespace VirusTotalDirectoryScanner.Services;
 
 public class QuotaService : IQuotaService
 {
-    private readonly SettingsService _settingsService;
+    private readonly ISettingsService _settingsService;
 
-    public QuotaService(SettingsService settingsService)
+    public QuotaService(ISettingsService settingsService)
     {
         _settingsService = settingsService;
     }

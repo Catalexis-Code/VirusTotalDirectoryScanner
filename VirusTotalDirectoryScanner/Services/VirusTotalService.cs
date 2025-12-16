@@ -6,14 +6,14 @@ using VirusTotalDirectoryScanner.Settings;
 
 namespace VirusTotalDirectoryScanner.Services;
 
-public class VirusTotalService
+public class VirusTotalService : IVirusTotalService
 {
     private readonly IVirusTotalApi _api;
-    private readonly SettingsService _settingsService;
+    private readonly ISettingsService _settingsService;
     private readonly IQuotaService _quotaService;
     private readonly RateLimiter _limiter;
 
-    public VirusTotalService(SettingsService settingsService, IQuotaService quotaService)
+    public VirusTotalService(ISettingsService settingsService, IQuotaService quotaService)
     {
         _settingsService = settingsService;
         _quotaService = quotaService;

@@ -11,7 +11,7 @@ namespace VirusTotalDirectoryScanner.ViewModels;
 public partial class MainWindowViewModel : ObservableObject
 {
     private readonly Func<DirectoryScannerService> _scannerFactory;
-    private readonly SettingsService _settingsService;
+    private readonly ISettingsService _settingsService;
     private DirectoryScannerService? _scannerService;
 
     [ObservableProperty]
@@ -24,7 +24,7 @@ public partial class MainWindowViewModel : ObservableObject
 
     public MainWindowViewModel(
         Func<DirectoryScannerService> scannerFactory,
-        SettingsService settingsService)
+        ISettingsService settingsService)
     {
         _scannerFactory = scannerFactory;
         _settingsService = settingsService;

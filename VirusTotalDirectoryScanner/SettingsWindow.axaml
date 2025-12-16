@@ -18,30 +18,30 @@
                 <Button Content="Register at VirusTotal" Click="OpenRegistrationUrl_Click" Background="Transparent" BorderThickness="0" Foreground="#0078D7" Padding="0" HorizontalAlignment="Left" Cursor="Hand" FontSize="12"/>
             </StackPanel>
             <Grid ColumnDefinitions="*,Auto">
-              <TextBox x:Name="ApiKeyTextBox" Grid.Column="0" Text="{Binding ApiKey, Mode=TwoWay}" PasswordChar="{Binding ApiKeyPasswordChar}" Watermark="Enter your VirusTotal API key" />
-              <Button Grid.Column="1" Margin="4,0,0,0" Click="ToggleApiKey_Click" Content="👁" ToolTip.Tip="Toggle API Key Visibility" />
+              <TextBox x:Name="ApiKeyTextBox" Grid.Column="0" Text="{Binding ApiKey, Mode=TwoWay}" PasswordChar="{Binding ApiKeyPasswordChar}" Watermark="Enter your VirusTotal API key" AutomationProperties.Name="VirusTotal API Key" />
+              <Button Grid.Column="1" Margin="4,0,0,0" Click="ToggleApiKey_Click" Content="👁" ToolTip.Tip="Toggle API Key Visibility" AutomationProperties.Name="Toggle API Key Visibility" />
             </Grid>
 
             <Separator Margin="0,12" />
 
             <TextBlock Text="Requests per minute" FontWeight="SemiBold" />
             <TextBlock Text="The maximum number of API requests allowed per minute (Standard free limit is 4)." TextWrapping="Wrap" FontSize="12" Foreground="Gray" />
-            <NumericUpDown Value="{Binding QuotaPerMinute, Mode=TwoWay}" Minimum="0" />
+            <NumericUpDown Value="{Binding QuotaPerMinute, Mode=TwoWay}" Minimum="0" AutomationProperties.Name="Requests per minute" />
 
             <TextBlock Text="Requests per day" FontWeight="SemiBold" Margin="0,8,0,0" />
             <TextBlock Text="The maximum number of API requests allowed per day (Standard free limit is 500)." TextWrapping="Wrap" FontSize="12" Foreground="Gray" />
             <Grid ColumnDefinitions="*, Auto, Auto">
-                <NumericUpDown Grid.Column="0" Value="{Binding QuotaPerDay, Mode=TwoWay}" Minimum="0" />
+                <NumericUpDown Grid.Column="0" Value="{Binding QuotaPerDay, Mode=TwoWay}" Minimum="0" AutomationProperties.Name="Requests per day" />
                 <TextBlock Grid.Column="1" Text="Used:" VerticalAlignment="Center" Margin="8,0,4,0"/>
-                <NumericUpDown Grid.Column="2" Value="{Binding UsedToday, Mode=TwoWay}" Minimum="0" Width="100" />
+                <NumericUpDown Grid.Column="2" Value="{Binding UsedToday, Mode=TwoWay}" Minimum="0" Width="100" AutomationProperties.Name="Requests used today" />
             </Grid>
 
             <TextBlock Text="Requests per month" FontWeight="SemiBold" Margin="0,8,0,0" />
             <TextBlock Text="The maximum number of API requests allowed per month (Standard free limit is 15.5 K)." TextWrapping="Wrap" FontSize="12" Foreground="Gray" />
             <Grid ColumnDefinitions="*, Auto, Auto">
-                <NumericUpDown Grid.Column="0" Value="{Binding QuotaPerMonth, Mode=TwoWay}" Minimum="0" />
+                <NumericUpDown Grid.Column="0" Value="{Binding QuotaPerMonth, Mode=TwoWay}" Minimum="0" AutomationProperties.Name="Requests per month" />
                 <TextBlock Grid.Column="1" Text="Used:" VerticalAlignment="Center" Margin="8,0,4,0"/>
-                <NumericUpDown Grid.Column="2" Value="{Binding UsedThisMonth, Mode=TwoWay}" Minimum="0" Width="100" />
+                <NumericUpDown Grid.Column="2" Value="{Binding UsedThisMonth, Mode=TwoWay}" Minimum="0" Width="100" AutomationProperties.Name="Requests used this month" />
             </Grid>
           </StackPanel>
         </ScrollViewer>
@@ -52,19 +52,19 @@
           <StackPanel Margin="8" Spacing="8">
             <TextBlock Text="Scan directory" FontWeight="SemiBold" />
             <TextBlock Text="The directory where files are dropped to be scanned." TextWrapping="Wrap" FontSize="12" Foreground="Gray" />
-            <TextBox Text="{Binding ScanDirectory, Mode=TwoWay}" />
+            <TextBox Text="{Binding ScanDirectory, Mode=TwoWay}" AutomationProperties.Name="Scan directory" />
 
             <TextBlock Text="Clean directory" FontWeight="SemiBold" Margin="0,8,0,0" />
             <TextBlock Text="Files are moved here if no threats are detected." TextWrapping="Wrap" FontSize="12" Foreground="Gray" />
-            <TextBox Text="{Binding CleanDirectory, Mode=TwoWay}" />
+            <TextBox Text="{Binding CleanDirectory, Mode=TwoWay}" AutomationProperties.Name="Clean directory" />
 
             <TextBlock Text="Compromised directory" FontWeight="SemiBold" Margin="0,8,0,0" />
             <TextBlock Text="Files are moved here if threats are detected." TextWrapping="Wrap" FontSize="12" Foreground="Gray" />
-            <TextBox Text="{Binding CompromisedDirectory, Mode=TwoWay}" />
+            <TextBox Text="{Binding CompromisedDirectory, Mode=TwoWay}" AutomationProperties.Name="Compromised directory" />
 
             <TextBlock Text="Log file path" FontWeight="SemiBold" Margin="0,8,0,0" />
             <TextBlock Text="The full path to the log file where scan results are recorded." TextWrapping="Wrap" FontSize="12" Foreground="Gray" />
-            <TextBox Text="{Binding LogFilePath, Mode=TwoWay}" />
+            <TextBox Text="{Binding LogFilePath, Mode=TwoWay}" AutomationProperties.Name="Log file path" />
           </StackPanel>
         </ScrollViewer>
       </TabItem>
@@ -74,13 +74,13 @@
           <StackPanel Margin="8" Spacing="8">
             <TextBlock Text="User Secrets File" FontWeight="SemiBold" />
             <TextBlock Text="This file stores sensitive information like your API Key. It is stored in your user profile directory to keep it separate from the application code." TextWrapping="Wrap" FontSize="12" Foreground="Gray" />
-            <TextBox Text="{Binding UserSecretsFilePath}" IsReadOnly="True" />
+            <TextBox Text="{Binding UserSecretsFilePath}" IsReadOnly="True" AutomationProperties.Name="User Secrets File" />
 
             <Separator Margin="0,12" />
 
             <TextBlock Text="User Settings File" FontWeight="SemiBold" />
             <TextBlock Text="This file stores your application preferences and configuration. It is stored in your local application data folder." TextWrapping="Wrap" FontSize="12" Foreground="Gray" />
-            <TextBox Text="{Binding UserSettingsFilePath}" IsReadOnly="True" />
+            <TextBox Text="{Binding UserSettingsFilePath}" IsReadOnly="True" AutomationProperties.Name="User Settings File" />
           </StackPanel>
         </ScrollViewer>
       </TabItem>

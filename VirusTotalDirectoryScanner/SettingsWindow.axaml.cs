@@ -40,6 +40,22 @@ public sealed partial class SettingsWindow : Window
 		}
 	}
 
+    private void OpenRegistrationUrl_Click(object? sender, RoutedEventArgs e)
+    {
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "https://www.virustotal.com/gui/join-us",
+                UseShellExecute = true
+            });
+        }
+        catch
+        {
+            // Best effort
+        }
+    }
+
 	private async void Save_Click(object? sender, RoutedEventArgs e)
 	{
 		if (DataContext is not SettingsDialogViewModel vm)

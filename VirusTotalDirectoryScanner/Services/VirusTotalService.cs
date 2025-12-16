@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Threading.RateLimiting;
+using System.Net.Http;
 using Refit;
 using VirusTotalDirectoryScanner.Models;
 using VirusTotalDirectoryScanner.Settings;
@@ -11,12 +12,21 @@ public class VirusTotalService : IVirusTotalService
     private readonly IVirusTotalApi _api;
     private readonly ISettingsService _settingsService;
     private readonly IQuotaService _quotaService;
+    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly IFileOperationsService _fileOperationsService;
 
-    public VirusTotalService(ISettingsService settingsService, IQuotaService quotaService, IVirusTotalApi api)
+    public VirusTotalService(
+        ISettingsService settingsService, 
+        IQuotaService quotaService, 
+        IVirusTotalApi api,
+        IHttpClientFactory httpClientFactory,
+        IFileOperationsService fileOperationsService)
     {
         _settingsService = settingsService;
         _quotaService = quotaService;
         _api = api;
+        _httpClientFactory = httpClientFactory;
+        _fileOperationsService = fileOperationsService;
     }
 
     public async Task<(ScanResultStatus Status, int DetectionCount, string Hash, string? Message)> ScanFileAsync(string filePath, CancellationToken ct = default)
@@ -46,7 +56,7 @@ public class VirusTotalService : IVirusTotalService
         // 4. Upload File
         await _quotaService.IncrementQuotaAsync(ct);
         
-        long fileSize = new FileInfo(filePath).Length;
+        long fileSize = _fileOperationsService.GetFileLength(filePath);
         
         // Hard limit check (650MB)
         if (fileSize > 681574400) 
@@ -64,11 +74,10 @@ public class VirusTotalService : IVirusTotalService
                 return (ScanResultStatus.Failed, 0, hash, "Could not get upload URL.");
 
             // Use a temporary HttpClient to upload to the dynamic URL
-            using var uploadClient = new HttpClient();
-            uploadClient.DefaultRequestHeaders.Add("x-apikey", _settingsService.ApiKey);
+            using var uploadClient = _httpClientFactory.CreateClient("VirusTotalUpload");
             
             using var content = new MultipartFormDataContent();
-            await using var fileStream = File.OpenRead(filePath);
+            await using var fileStream = _fileOperationsService.OpenRead(filePath);
             content.Add(new StreamContent(fileStream), "file", Path.GetFileName(filePath));
             
             var response = await uploadClient.PostAsync(urlResponse.Data, content, ct);
@@ -81,7 +90,7 @@ public class VirusTotalService : IVirusTotalService
         else
         {
             // Standard flow
-            await using var stream = File.OpenRead(filePath);
+            await using var stream = _fileOperationsService.OpenRead(filePath);
             var streamPart = new StreamPart(stream, Path.GetFileName(filePath));
             uploadResult = await _api.UploadFile(streamPart);
         }
@@ -124,7 +133,7 @@ public class VirusTotalService : IVirusTotalService
     private async Task<string> CalculateSha256Async(string filePath, CancellationToken ct)
     {
         using var sha256 = SHA256.Create();
-        await using var stream = File.OpenRead(filePath);
+        await using var stream = _fileOperationsService.OpenRead(filePath);
         byte[] hashBytes = await sha256.ComputeHashAsync(stream, ct);
         return BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
     }

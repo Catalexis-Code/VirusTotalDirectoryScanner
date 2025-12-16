@@ -43,6 +43,16 @@ public sealed partial class App : Application
         services.AddSingleton<IFileOperationsService, FileOperationsService>();
         services.AddSingleton<IDirectoryWatcherFactory, DirectoryWatcherFactory>();
         
+        services.AddHttpClient("VirusTotalUpload", (sp, client) =>
+        {
+            var settingsService = sp.GetRequiredService<ISettingsService>();
+            var apiKey = settingsService.ApiKey;
+            if (!string.IsNullOrWhiteSpace(apiKey))
+            {
+                client.DefaultRequestHeaders.Add("x-apikey", apiKey);
+            }
+        });
+
         services.AddSingleton<IVirusTotalApi>(sp =>
         {
             var settingsService = sp.GetRequiredService<ISettingsService>();

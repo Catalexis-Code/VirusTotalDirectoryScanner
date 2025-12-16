@@ -15,10 +15,13 @@
     <Separator Grid.Row="1" />
 
     <Grid Grid.Row="2" RowDefinitions="Auto, *">
-      <StackPanel Spacing="8" Margin="0,0,0,10">
-        <TextBlock FontWeight="SemiBold" Text="Status" />
-        <TextBlock x:Name="StatusText" Text="Loading configuration…" />
-      </StackPanel>
+      <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,10">
+        <StackPanel Spacing="8">
+          <TextBlock FontWeight="SemiBold" Text="Status" />
+          <TextBlock x:Name="StatusText" Text="Loading configuration…" />
+        </StackPanel>
+        <Button Grid.Column="1" Content="Clear" Click="Clear_Click" VerticalAlignment="Bottom" />
+      </Grid>
 
       <DataGrid Grid.Row="1" x:Name="FilesGrid" AutoGenerateColumns="False" IsReadOnly="True">
         <DataGrid.Columns>

@@ -70,6 +70,12 @@ public class DirectoryScannerService : IDisposable
 
     private void EnqueueFile(string fullPath)
     {
+        if (!string.IsNullOrEmpty(_settings.Paths.LogFilePath) && 
+            string.Equals(Path.GetFullPath(fullPath), Path.GetFullPath(_settings.Paths.LogFilePath), StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
         _fileQueue.Enqueue(fullPath);
         
         // Notify UI of pending file

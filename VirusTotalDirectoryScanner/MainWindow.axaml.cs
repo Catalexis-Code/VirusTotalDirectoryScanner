@@ -119,6 +119,11 @@ public sealed partial class MainWindow : Window
 		await OpenSettingsDialog();
 	}
 
+	private void Clear_Click(object? sender, RoutedEventArgs e)
+	{
+		_scanResults.Clear();
+	}
+
 	private async Task OpenSettingsDialog()
 	{
 		try

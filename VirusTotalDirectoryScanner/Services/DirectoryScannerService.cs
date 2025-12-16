@@ -13,7 +13,7 @@ public class DirectoryScannerService : IDisposable
     private readonly Action<ScanResult> _onResultUpdated;
     private readonly Action<string> _onLog;
     private FileSystemWatcher? _watcher;
-    private readonly ConcurrentStack<string> _fileQueue = new();
+    private readonly ConcurrentQueue<string> _fileQueue = new();
     private readonly CancellationTokenSource _cts = new();
     private Task? _processingTask;
     
@@ -97,7 +97,7 @@ public class DirectoryScannerService : IDisposable
             return;
         }
 
-        _fileQueue.Push(fullPath);
+        _fileQueue.Enqueue(fullPath);
         
         // Notify UI of pending file
         _onResultUpdated(new ScanResult 
@@ -112,7 +112,7 @@ public class DirectoryScannerService : IDisposable
     {
         while (!_cts.Token.IsCancellationRequested)
         {
-            if (_fileQueue.TryPop(out string? filePath))
+            if (_fileQueue.TryDequeue(out string? filePath))
             {
                 await ProcessFileAsync(filePath);
             }
@@ -217,7 +217,7 @@ public class DirectoryScannerService : IDisposable
                 if (_lockedFiles.TryRemove(filePath, out _))
                 {
                     Log($"File unlocked: {Path.GetFileName(filePath)}. Re-queuing.");
-                    _fileQueue.Push(filePath);
+                    _fileQueue.Enqueue(filePath);
                 }
             }
         }

@@ -86,7 +86,7 @@ public sealed partial class MainWindow : Window
 			}
 			else
 			{
-				_scanResults.Add(result);
+				_scanResults.Insert(0, result);
 			}
 		});
 	}

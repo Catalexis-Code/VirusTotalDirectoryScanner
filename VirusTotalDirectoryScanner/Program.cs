@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Configuration;
+using VirusTotalDirectoryScanner.Settings;
 
 // Build configuration
 IConfiguration config = new ConfigurationBuilder()
@@ -9,10 +10,16 @@ IConfiguration config = new ConfigurationBuilder()
 
 // Read settings
 string? apiKey = config["VirusTotalApiKey"];
-int quotaPerMinute = config.GetValue<int>("QuotaPerMinute");
-int quotaPerDay = config.GetValue<int>("QuotaPerDay");
-int quotaPerMonth = config.GetValue<int>("QuotaPerMonth");
+
+VirusTotalDirectoryScannerSettings settings = new();
+config.Bind(settings);
+
+int quotaPerMinute = settings.QuotaPerMinute;
+int quotaPerDay = settings.QuotaPerDay;
+int quotaPerMonth = settings.QuotaPerMonth;
 
 Console.WriteLine($"API Key found: {!string.IsNullOrEmpty(apiKey)}");
 Console.WriteLine($"Quota: {quotaPerMinute}/min, {quotaPerDay}/day, {quotaPerMonth}/month");
+
+Console.WriteLine($"Paths configured: {!string.IsNullOrWhiteSpace(settings.Paths.ScanDirectory)}");
 

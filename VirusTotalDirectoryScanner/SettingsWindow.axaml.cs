@@ -1,7 +1,12 @@
 using System;
+using System.Linq;
+using System.Text.RegularExpressions;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
+using Avalonia.VisualTree;
+using VirusTotalDirectoryScanner.Helpers;
 using VirusTotalDirectoryScanner.Settings;
 
 namespace VirusTotalDirectoryScanner;
@@ -19,6 +24,13 @@ public sealed partial class SettingsWindow : Window
 	protected override void OnOpened(EventArgs e)
 	{
 		base.OnOpened(e);
+
+		// Attach input validation to all NumericUpDown controls
+		foreach (var numericUpDown in this.GetVisualDescendants().OfType<NumericUpDown>())
+		{
+			numericUpDown.AddHandler(TextInputEvent, OnNumericInput, RoutingStrategies.Tunnel);
+		}
+
 		if (DataContext is SettingsDialogViewModel vm)
 		{
 			if (string.IsNullOrWhiteSpace(vm.ApiKey) || vm.ApiKey == "REPLACE_WITH_REAL_KEY")
@@ -68,6 +80,14 @@ public sealed partial class SettingsWindow : Window
 		if (saved)
 		{
 			Close(true);
+		}
+	}
+
+	private void OnNumericInput(object? sender, TextInputEventArgs e)
+	{
+		if (!InputValidators.IsNumeric(e.Text))
+		{
+			e.Handled = true;
 		}
 	}
 }

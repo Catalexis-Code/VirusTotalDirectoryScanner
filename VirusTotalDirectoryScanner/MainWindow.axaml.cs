@@ -1,21 +1,31 @@
 using System;
 using System.Threading.Tasks;
+using System.Collections.ObjectModel;
+using System.Linq;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using AppSettings = VirusTotalDirectoryScanner.Settings.Settings;
 using VirusTotalDirectoryScanner.Settings;
+using VirusTotalDirectoryScanner.Models;
 
 namespace VirusTotalDirectoryScanner;
 
 public sealed partial class MainWindow : Window
 {
 	private TextBlock? _statusText;
+	private DataGrid? _filesGrid;
+	private ObservableCollection<ScanResult> _scanResults = new();
 
 	public MainWindow()
 	{
 		InitializeComponent();
 		_statusText = this.FindControl<TextBlock>("StatusText");
+		_filesGrid = this.FindControl<DataGrid>("FilesGrid");
+		if (_filesGrid != null)
+		{
+			_filesGrid.ItemsSource = _scanResults;
+		}
 		LoadConfigurationSummary();
 		Opened += MainWindow_Opened;
 	}
@@ -91,6 +101,28 @@ public sealed partial class MainWindow : Window
 		if (_statusText is not null)
 		{
 			_statusText.Text = text;
+		}
+	}
+
+	public void AddFile(string filePath, ScanStatus status)
+	{
+		var fileName = System.IO.Path.GetFileName(filePath);
+		var result = new ScanResult
+		{
+			FileName = fileName,
+			FullPath = filePath,
+			Status = status
+		};
+		// Insert at top
+		_scanResults.Insert(0, result);
+	}
+
+	public void UpdateFileStatus(string filePath, ScanStatus newStatus)
+	{
+		var item = _scanResults.FirstOrDefault(r => r.FullPath == filePath);
+		if (item != null)
+		{
+			item.Status = newStatus;
 		}
 	}
 }

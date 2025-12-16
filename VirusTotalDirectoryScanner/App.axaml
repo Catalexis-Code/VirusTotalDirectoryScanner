@@ -4,5 +4,6 @@
              x:Class="VirusTotalDirectoryScanner.App">
   <Application.Styles>
     <fluent:FluentTheme />
+    <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml"/>
   </Application.Styles>
 </Application>

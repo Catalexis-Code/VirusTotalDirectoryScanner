@@ -1,5 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:models="using:VirusTotalDirectoryScanner.Models"
         x:Class="VirusTotalDirectoryScanner.MainWindow"
         Title="VirusTotalDirectoryScanner"
         WindowStartupLocation="CenterScreen"
@@ -13,9 +14,18 @@
 
     <Separator Grid.Row="1" />
 
-    <StackPanel Grid.Row="2" Spacing="8">
-      <TextBlock FontWeight="SemiBold" Text="Status" />
-      <TextBlock x:Name="StatusText" Text="Loading configuration…" />
-    </StackPanel>
+    <Grid Grid.Row="2" RowDefinitions="Auto, *">
+      <StackPanel Spacing="8" Margin="0,0,0,10">
+        <TextBlock FontWeight="SemiBold" Text="Status" />
+        <TextBlock x:Name="StatusText" Text="Loading configuration…" />
+      </StackPanel>
+
+      <DataGrid Grid.Row="1" x:Name="FilesGrid" AutoGenerateColumns="False" IsReadOnly="True">
+        <DataGrid.Columns>
+          <DataGridTextColumn Header="File Name" Binding="{Binding FileName}" Width="*" />
+          <DataGridTextColumn Header="Status" Binding="{Binding StatusDisplay}" Width="150" />
+        </DataGrid.Columns>
+      </DataGrid>
+    </Grid>
   </Grid>
 </Window>

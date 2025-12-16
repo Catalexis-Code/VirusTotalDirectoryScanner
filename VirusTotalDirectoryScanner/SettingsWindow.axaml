@@ -28,13 +28,6 @@
 
             <TextBlock Text="Requests per month" FontWeight="SemiBold" Margin="0,8,0,0" />
             <NumericUpDown Value="{Binding QuotaPerMonth, Mode=TwoWay}" Minimum="0" />
-
-            <TextBlock Text="These values are stored in your user settings file." Margin="0,12,0,0" />
-
-            <Separator Margin="0,12" />
-
-            <TextBlock Text="User Secrets file" FontWeight="SemiBold" Margin="0,12,0,0" />
-            <TextBox Text="{Binding UserSecretsFilePath}" IsReadOnly="True" />
           </StackPanel>
         </ScrollViewer>
       </TabItem>
@@ -53,8 +46,21 @@
 
             <TextBlock Text="Log file path" FontWeight="SemiBold" Margin="0,8,0,0" />
             <TextBox Text="{Binding LogFilePath, Mode=TwoWay}" />
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
 
-            <TextBlock Text="User settings file" FontWeight="SemiBold" Margin="0,12,0,0" />
+      <TabItem Header="Settings Store">
+        <ScrollViewer>
+          <StackPanel Margin="8" Spacing="8">
+            <TextBlock Text="User Secrets File" FontWeight="SemiBold" />
+            <TextBlock Text="This file stores sensitive information like your API Key. It is stored in your user profile directory to keep it separate from the application code." TextWrapping="Wrap" FontSize="12" Foreground="Gray" />
+            <TextBox Text="{Binding UserSecretsFilePath}" IsReadOnly="True" />
+
+            <Separator Margin="0,12" />
+
+            <TextBlock Text="User Settings File" FontWeight="SemiBold" />
+            <TextBlock Text="This file stores your application preferences and configuration. It is stored in your local application data folder." TextWrapping="Wrap" FontSize="12" Foreground="Gray" />
             <TextBox Text="{Binding UserSettingsFilePath}" IsReadOnly="True" />
           </StackPanel>
         </ScrollViewer>

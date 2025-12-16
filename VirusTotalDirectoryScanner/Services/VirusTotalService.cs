@@ -39,7 +39,7 @@ public class VirusTotalService
         _api = RestService.For<IVirusTotalApi>(httpClient);
     }
 
-    public async Task<ScanResultStatus> ScanFileAsync(string filePath, CancellationToken ct = default)
+    public async Task<(ScanResultStatus Status, int DetectionCount, string Hash)> ScanFileAsync(string filePath, CancellationToken ct = default)
     {
         // 1. Check Quota
         CheckQuota();
@@ -54,7 +54,8 @@ public class VirusTotalService
             var report = await _api.GetFileReport(hash);
             if (report.Data != null)
             {
-                return DetermineStatus(report.Data.Attributes?.LastAnalysisStats);
+                var status = DetermineStatus(report.Data.Attributes?.LastAnalysisStats);
+                return (status.Status, status.DetectionCount, hash);
             }
         }
         catch (ApiException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
@@ -93,20 +94,21 @@ public class VirusTotalService
             await IncrementQuotaAsync(ct);
 
             var analysis = await _api.GetAnalysis(analysisId);
-            string? status = analysis.Data?.Attributes?.Status;
+            string? statusStr = analysis.Data?.Attributes?.Status;
 
-            if (status == "completed")
+            if (statusStr == "completed")
             {
-                return DetermineStatus(analysis.Data?.Attributes?.Stats);
+                var status = DetermineStatus(analysis.Data?.Attributes?.Stats);
+                return (status.Status, status.DetectionCount, hash);
             }
         }
     }
 
-    private ScanResultStatus DetermineStatus(AnalysisStats? stats)
+    private (ScanResultStatus Status, int DetectionCount) DetermineStatus(AnalysisStats? stats)
     {
-        if (stats == null) return ScanResultStatus.Unknown;
-        if (stats.Malicious > 0) return ScanResultStatus.Compromised;
-        return ScanResultStatus.Clean;
+        if (stats == null) return (ScanResultStatus.Unknown, 0);
+        if (stats.Malicious > 0) return (ScanResultStatus.Compromised, stats.Malicious);
+        return (ScanResultStatus.Clean, 0);
     }
 
     private async Task<string> CalculateSha256Async(string filePath, CancellationToken ct)

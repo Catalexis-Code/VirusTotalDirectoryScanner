@@ -126,16 +126,19 @@ public class DirectoryScannerService : IDisposable
 
             // 2. Scan
             Log($"Scanning file: {fileName}");
-            var status = await _vtService.ScanFileAsync(filePath, _cts.Token);
+            var scanResult = await _vtService.ScanFileAsync(filePath, _cts.Token);
+            
+            result.DetectionCount = scanResult.DetectionCount;
+            result.FileHash = scanResult.Hash;
 
             // 3. Move and Update Status
-            if (status == ScanResultStatus.Clean)
+            if (scanResult.Status == ScanResultStatus.Clean)
             {
                 result.Status = ScanStatus.Clean;
                 MoveFile(filePath, _settings.Paths.CleanDirectory);
                 Log($"File {fileName} is CLEAN. Moved to clean directory.");
             }
-            else if (status == ScanResultStatus.Compromised)
+            else if (scanResult.Status == ScanResultStatus.Compromised)
             {
                 result.Status = ScanStatus.Compromised;
                 MoveFile(filePath, _settings.Paths.CompromisedDirectory);

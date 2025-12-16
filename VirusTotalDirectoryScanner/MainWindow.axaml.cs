@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Threading.Tasks;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -79,6 +80,8 @@ public sealed partial class MainWindow : Window
 			if (existing != null)
 			{
 				existing.Status = result.Status;
+                existing.DetectionCount = result.DetectionCount;
+                existing.FileHash = result.FileHash;
 			}
 			else
 			{
@@ -163,4 +166,35 @@ public sealed partial class MainWindow : Window
 		_scannerService?.Dispose();
 		base.OnClosed(e);
 	}
+
+    private void OpenReport_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Control control && control.DataContext is ScanResult result)
+        {
+            if (!string.IsNullOrEmpty(result.Url))
+            {
+                OpenUrl(result.Url);
+            }
+            else
+            {
+                SetStatus("Report URL not available (missing hash).");
+            }
+        }
+    }
+
+    private void OpenUrl(string url)
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = url,
+                UseShellExecute = true
+            });
+        }
+        catch (Exception ex)
+        {
+            SetStatus($"Failed to open link: {ex.Message}");
+        }
+    }
 }

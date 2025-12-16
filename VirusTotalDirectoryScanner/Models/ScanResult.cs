@@ -16,6 +16,8 @@ public enum ScanStatus
 public class ScanResult : INotifyPropertyChanged
 {
     private ScanStatus _status;
+    private int _detectionCount;
+    private string _fileHash = string.Empty;
 
     public string FileName { get; set; } = string.Empty;
     public string FullPath { get; set; } = string.Empty;
@@ -30,9 +32,50 @@ public class ScanResult : INotifyPropertyChanged
                 _status = value;
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(StatusDisplay));
+                OnPropertyChanged(nameof(IsScanning));
+                OnPropertyChanged(nameof(IsCompromised));
+                OnPropertyChanged(nameof(IsClean));
+                OnPropertyChanged(nameof(IsOther));
             }
         }
     }
+
+    public int DetectionCount
+    {
+        get => _detectionCount;
+        set
+        {
+            if (_detectionCount != value)
+            {
+                _detectionCount = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(StatusDisplay));
+            }
+        }
+    }
+
+    public string FileHash
+    {
+        get => _fileHash;
+        set
+        {
+            if (_fileHash != value)
+            {
+                _fileHash = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(Url));
+            }
+        }
+    }
+
+    public string Url => !string.IsNullOrEmpty(FileHash) 
+        ? $"https://www.virustotal.com/gui/file/{FileHash}" 
+        : string.Empty;
+
+    public bool IsScanning => Status == ScanStatus.Scanning;
+    public bool IsCompromised => Status == ScanStatus.Compromised;
+    public bool IsClean => Status == ScanStatus.Clean;
+    public bool IsOther => !IsScanning && !IsClean && !IsCompromised;
 
     public string StatusDisplay => Status switch
     {
@@ -40,7 +83,7 @@ public class ScanResult : INotifyPropertyChanged
         ScanStatus.PendingLocked => "Pending (Locked)",
         ScanStatus.Scanning => "Scanning...",
         ScanStatus.Clean => "Clean",
-        ScanStatus.Compromised => "Compromised",
+        ScanStatus.Compromised => $"Compromised ({DetectionCount})",
         _ => Status.ToString()
     };
 

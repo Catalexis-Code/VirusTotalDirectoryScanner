@@ -142,6 +142,27 @@ public class DirectoryScannerService : IDisposable
             Status = ScanStatus.Scanning 
         };
         ScanResultUpdated?.Invoke(this, result);
+        
+        // Skip MS Office temp files
+        if (fileName.StartsWith("~$"))
+        {
+            result.Status = ScanStatus.Skipped;
+            result.Message = "office log file";
+            Log($"Skipping file {fileName}: {result.Message}");
+            ScanResultUpdated?.Invoke(this, result);
+            return;
+        }
+
+        // Skip browser incomplete downloads
+        var extension = Path.GetExtension(fileName).ToLowerInvariant();
+        if (extension == ".crdownload" || extension == ".part" || extension == ".download")
+        {
+            result.Status = ScanStatus.Skipped;
+            result.Message = "browser download file";
+            Log($"Skipping file {fileName}: {result.Message}");
+            ScanResultUpdated?.Invoke(this, result);
+            return;
+        }
 
         try
         {

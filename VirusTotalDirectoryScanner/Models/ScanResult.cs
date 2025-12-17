@@ -11,7 +11,8 @@ public enum ScanStatus
     Scanning,
     Clean,
     Compromised,
-    Failed
+    Failed,
+    Skipped
 }
 
 public class ScanResult : INotifyPropertyChanged
@@ -54,6 +55,7 @@ public class ScanResult : INotifyPropertyChanged
                 OnPropertyChanged(nameof(IsFailed));
                 OnPropertyChanged(nameof(IsPending));
                 OnPropertyChanged(nameof(IsPendingLocked));
+                OnPropertyChanged(nameof(IsSkipped));
                 OnPropertyChanged(nameof(IsOther));
             }
         }
@@ -97,7 +99,8 @@ public class ScanResult : INotifyPropertyChanged
     public bool IsFailed => Status == ScanStatus.Failed;
     public bool IsPending => Status == ScanStatus.Pending;
     public bool IsPendingLocked => Status == ScanStatus.PendingLocked;
-    public bool IsOther => !IsScanning && !IsClean && !IsCompromised && !IsFailed && !IsPending && !IsPendingLocked;
+    public bool IsSkipped => Status == ScanStatus.Skipped;
+    public bool IsOther => !IsScanning && !IsClean && !IsCompromised && !IsFailed && !IsPending && !IsPendingLocked && !IsSkipped;
 
     public string StatusDisplay => Status switch
     {
@@ -107,6 +110,7 @@ public class ScanResult : INotifyPropertyChanged
         ScanStatus.Clean => "Clean",
         ScanStatus.Compromised => $"Compromised ({DetectionCount})",
         ScanStatus.Failed => $"Failed: {Message}",
+        ScanStatus.Skipped => $"Skipped ({Message})",
         _ => Status.ToString()
     };
 

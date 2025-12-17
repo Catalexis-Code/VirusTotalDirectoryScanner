@@ -180,4 +180,46 @@ public class DirectoryScannerServiceTests
         // Should move to new name (timestamped)
         _fileOpsMock.Verify(f => f.MoveFile(sourcePath, It.Is<string>(p => p != destPath && p.StartsWith(Path.Combine(_settings.Paths.CleanDirectory, "test_")))), Times.Once);
     }
+    [Fact]
+    public async Task ProcessFile_ShouldSkip_WhenFileIsOfficeTemp()
+    {
+        // Arrange
+        var filePath = "C:\\Scan\\~$doc.docx";
+        _fileOpsMock.Setup(f => f.GetFiles(_settings.Paths.ScanDirectory)).Returns(new[] { filePath });
+        _fileOpsMock.Setup(f => f.IsFileLocked(filePath)).Returns(false);
+
+        var results = new ConcurrentBag<(ScanStatus Status, string Message)>();
+        _sut.ScanResultUpdated += (s, e) => results.Add((e.Status, e.Message));
+
+        // Act
+        _sut.Start();
+        await Task.Delay(2000);
+
+        // Assert
+        results.Should().Contain(r => r.Status == ScanStatus.Skipped && r.Message == "office log file");
+        _vtServiceMock.Verify(v => v.ScanFileAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ProcessFile_ShouldSkip_WhenFileIsBrowserTemp()
+    {
+        // Arrange
+        var filePath1 = "C:\\Scan\\file.crdownload";
+        var filePath2 = "C:\\Scan\\file.part";
+        var filePath3 = "C:\\Scan\\file.download";
+        
+        _fileOpsMock.Setup(f => f.GetFiles(_settings.Paths.ScanDirectory)).Returns(new[] { filePath1, filePath2, filePath3 });
+        _fileOpsMock.Setup(f => f.IsFileLocked(It.IsAny<string>())).Returns(false);
+
+        var results = new ConcurrentBag<(ScanStatus Status, string Message)>();
+        _sut.ScanResultUpdated += (s, e) => results.Add((e.Status, e.Message));
+
+        // Act
+        _sut.Start();
+        await Task.Delay(2000);
+
+        // Assert
+        results.Should().Contain(r => r.Status == ScanStatus.Skipped && r.Message == "browser download file");
+        _vtServiceMock.Verify(v => v.ScanFileAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
 }

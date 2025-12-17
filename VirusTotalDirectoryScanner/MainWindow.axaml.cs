@@ -53,6 +53,21 @@ public sealed partial class MainWindow : Window
                 
                 var settings = _settingsService.CurrentSettings;
                 settings.Paths.ScanDirectory = path;
+
+                // Auto-populate other paths if they are blank
+                if (string.IsNullOrWhiteSpace(settings.Paths.CleanDirectory))
+                {
+                    settings.Paths.CleanDirectory = Path.Combine(path, "Clean");
+                }
+                if (string.IsNullOrWhiteSpace(settings.Paths.CompromisedDirectory))
+                {
+                    settings.Paths.CompromisedDirectory = Path.Combine(path, "Compromised");
+                }
+                if (string.IsNullOrWhiteSpace(settings.Paths.LogFilePath))
+                {
+                    settings.Paths.LogFilePath = Path.Combine(path, "virus-total-scanner-log.txt");
+                }
+
                 await _settingsService.SaveAsync(settings);
                 
                 vm.OnSettingsSaved();

@@ -40,7 +40,27 @@ internal sealed class SettingsDialogViewModel : INotifyPropertyChanged
 	public string? ScanDirectory
 	{
 		get => _scanDirectory;
-		set => SetProperty(ref _scanDirectory, value);
+		set 
+		{ 
+			if (SetProperty(ref _scanDirectory, value))
+			{
+				if (!string.IsNullOrWhiteSpace(value))
+				{
+					if (string.IsNullOrWhiteSpace(CleanDirectory))
+					{
+						CleanDirectory = Path.Combine(value, "Clean");
+					}
+					if (string.IsNullOrWhiteSpace(CompromisedDirectory))
+					{
+						CompromisedDirectory = Path.Combine(value, "Compromised");
+					}
+					if (string.IsNullOrWhiteSpace(LogFilePath))
+					{
+						LogFilePath = Path.Combine(value, "virus-total-scanner-log.txt");
+					}
+				}
+			}
+		}
 	}
 
 	public string? CleanDirectory
@@ -172,14 +192,15 @@ internal sealed class SettingsDialogViewModel : INotifyPropertyChanged
 		}
 	}
 
-	private void SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
+	private bool SetProperty<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
 	{
 		if (EqualityComparer<T>.Default.Equals(field, value))
 		{
-			return;
+			return false;
 		}
 
 		field = value;
 		PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+		return true;
 	}
 }

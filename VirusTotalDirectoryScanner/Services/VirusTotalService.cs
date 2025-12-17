@@ -1,5 +1,6 @@
 using System.Threading.RateLimiting;
 using System.Net.Http;
+using System.Text.Json;
 using Refit;
 using VirusTotalDirectoryScanner.Models;
 using VirusTotalDirectoryScanner.Settings;
@@ -30,6 +31,8 @@ public class VirusTotalService : IVirusTotalService
 
     public async Task<(ScanResultStatus Status, int DetectionCount, string Hash, string? Message)> ScanFileAsync(string filePath, CancellationToken ct = default)
     {
+        var settings = _settingsService.CurrentSettings;
+
         // 1. Check Quota
         _quotaService.CheckQuota();
 
@@ -40,7 +43,7 @@ public class VirusTotalService : IVirusTotalService
         try 
         {
             await _quotaService.IncrementQuotaAsync(ct);
-            var report = await _api.GetFileReport(hash);
+            var report = await ExecuteWithRetryAsync(() => _api.GetFileReport(hash), ct);
             if (report.Data != null)
             {
                 var status = DetermineStatus(report.Data.Attributes?.LastAnalysisStats);
@@ -56,11 +59,12 @@ public class VirusTotalService : IVirusTotalService
         await _quotaService.IncrementQuotaAsync(ct);
         
         long fileSize = _fileOperationsService.GetFileLength(filePath);
-        
-        // Hard limit check (650MB)
-        if (fileSize > 681574400) 
+        long maxSize = settings.General.MaxFileSizeBytes > 0 ? settings.General.MaxFileSizeBytes : 681574400;
+
+        // Hard limit check
+        if (fileSize > maxSize) 
         {
-            return (ScanResultStatus.Failed, 0, hash, "File exceeds 650MB limit.");
+            return (ScanResultStatus.Failed, 0, hash, $"File exceeds {maxSize/1024/1024}MB limit.");
         }
 
         VirusTotalResponse<AnalysisDescriptor> uploadResult;
@@ -68,7 +72,7 @@ public class VirusTotalService : IVirusTotalService
         if (fileSize > 33554432) // 32MB
         {
             // Large file flow
-            var urlResponse = await _api.GetLargeFileUploadUrl();
+            var urlResponse = await ExecuteWithRetryAsync(() => _api.GetLargeFileUploadUrl(), ct);
             if (urlResponse.Data == null) 
                 return (ScanResultStatus.Failed, 0, hash, "Could not get upload URL.");
 
@@ -79,39 +83,62 @@ public class VirusTotalService : IVirusTotalService
             await using var fileStream = _fileOperationsService.OpenRead(filePath);
             content.Add(new StreamContent(fileStream), "file", Path.GetFileName(filePath));
             
+            // Upload itself typically doesn't need 429 retry in the same way, but could benefit from robust transient error handling
+            // For simplicity, we keep standard retries if implementing a policy, but here we just do basic call.
             var response = await uploadClient.PostAsync(urlResponse.Data, content, ct);
             if (!response.IsSuccessStatusCode)
                 return (ScanResultStatus.Failed, 0, hash, $"Upload failed: {response.StatusCode}");
 
             var json = await response.Content.ReadAsStringAsync(ct);
-            uploadResult = System.Text.Json.JsonSerializer.Deserialize<VirusTotalResponse<AnalysisDescriptor>>(json)!;
+            try 
+            {
+                uploadResult = JsonSerializer.Deserialize<VirusTotalResponse<AnalysisDescriptor>>(json)!;
+            }
+            catch (JsonException)
+            {
+                return (ScanResultStatus.Failed, 0, hash, "Failed to deserialize upload response.");
+            }
         }
         else
         {
             // Standard flow
             await using var stream = _fileOperationsService.OpenRead(filePath);
             var streamPart = new StreamPart(stream, Path.GetFileName(filePath));
-            uploadResult = await _api.UploadFile(streamPart);
+            uploadResult = await ExecuteWithRetryAsync(() => _api.UploadFile(streamPart), ct);
         }
 
         if (uploadResult.Data?.Id == null)
         {
-            throw new Exception("Upload failed, no analysis ID returned.");
+            return (ScanResultStatus.Failed, 0, hash, "Upload failed, no analysis ID returned.");
         }
 
         string analysisId = uploadResult.Data.Id;
+        DateTime startTime = DateTime.Now;
+        int timeoutMinutes = settings.General.PollingTimeoutMinutes > 0 ? settings.General.PollingTimeoutMinutes : 15;
 
         // 5. Poll for results
         while (true)
         {
+            if (DateTime.Now - startTime > TimeSpan.FromMinutes(timeoutMinutes))
+            {
+                return (ScanResultStatus.Failed, 0, hash, "Scan timed out pending analysis.");
+            }
+
             await Task.Delay(10000, ct); // Wait 10s before polling
             
-            // Polling doesn't usually count towards quota in some APIs, but for VT it likely does as a request.
-            // The user prompt says "Use the public API within its quota... 4 per minute".
-            // So polling calls count.
             await _quotaService.IncrementQuotaAsync(ct);
 
-            var analysis = await _api.GetAnalysis(analysisId);
+            VirusTotalResponse<AnalysisObject> analysis;
+            try 
+            {
+                analysis = await ExecuteWithRetryAsync(() => _api.GetAnalysis(analysisId), ct);
+            }
+            catch (ApiException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                // Analysis ID not found? unexpected.
+                return (ScanResultStatus.Failed, 0, hash, "Analysis ID not found during polling.");
+            }
+
             string? statusStr = analysis.Data?.Attributes?.Status;
 
             if (statusStr == "completed")
@@ -119,7 +146,32 @@ public class VirusTotalService : IVirusTotalService
                 var status = DetermineStatus(analysis.Data?.Attributes?.Stats);
                 return (status.Status, status.DetectionCount, hash, null);
             }
+            // other statuses: queued, in-progress. loop again.
         }
+    }
+
+    private async Task<T> ExecuteWithRetryAsync<T>(Func<Task<T>> action, CancellationToken ct)
+    {
+        int maxRetries = 3;
+        int delay = 2000;
+
+        for (int i = 0; i <= maxRetries; i++)
+        {
+            try
+            {
+                return await action();
+            }
+            catch (ApiException ex) when ((int)ex.StatusCode == 429 || (int)ex.StatusCode >= 500)
+            {
+                if (i == maxRetries) throw; // Rethrow if last attempt
+
+                // If 429, ideally respect Retry-After header. 
+                // Since this simple implementation doesn't parse headers deeply here, uses exponential backoff.
+                await Task.Delay(delay, ct);
+                delay *= 2;
+            }
+        }
+        throw new InvalidOperationException("Unreachable code");
     }
 
     private (ScanResultStatus Status, int DetectionCount) DetermineStatus(AnalysisStats? stats)

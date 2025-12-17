@@ -1,4 +1,6 @@
 using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Platform;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Microsoft.Extensions.DependencyInjection;
@@ -31,6 +33,40 @@ public sealed partial class App : Application
             var mainWindow = Services.GetRequiredService<MainWindow>();
             mainWindow.DataContext = Services.GetRequiredService<MainWindowViewModel>();
             desktop.MainWindow = mainWindow;
+
+            var trayIcon = new TrayIcon
+            {
+                Icon = new WindowIcon(AssetLoader.Open(new Uri("avares://VirusTotalDirectoryScanner/Assets/VT-Directory-Scanner-Logojpg.jpg"))),
+                ToolTipText = "VirusTotal Directory Scanner"
+            };
+
+            trayIcon.Clicked += (s, e) =>
+            {
+                mainWindow.Show();
+                mainWindow.WindowState = WindowState.Normal;
+                mainWindow.Activate();
+            };
+
+            var menu = new NativeMenu();
+            
+            var openItem = new NativeMenuItem("Open");
+            openItem.Click += (s, e) =>
+            {
+                mainWindow.Show();
+                mainWindow.WindowState = WindowState.Normal;
+                mainWindow.Activate();
+            };
+            menu.Items.Add(openItem);
+
+            var exitItem = new NativeMenuItem("Exit");
+            exitItem.Click += (s, e) =>
+            {
+                desktop.Shutdown();
+            };
+            menu.Items.Add(exitItem);
+
+            trayIcon.Menu = menu;
+            trayIcon.IsVisible = true;
         }
 
         base.OnFrameworkInitializationCompleted();

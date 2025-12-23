@@ -27,6 +27,8 @@ internal sealed class ThrottlingHandler : DelegatingHandler
         if (!lease.IsAcquired)
             return new HttpResponseMessage(System.Net.HttpStatusCode.TooManyRequests);
 
+        _rateLimitService.NotifyRateLimitResolved();
+
         return await base.SendAsync(request, ct);
     }
 }

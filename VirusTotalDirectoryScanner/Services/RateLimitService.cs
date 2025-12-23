@@ -8,6 +8,7 @@ public class RateLimitService : IRateLimitService
     private readonly TimeSpan _windowDuration = TimeSpan.FromMinutes(1);
 
     public event EventHandler<TimeSpan>? RateLimitHit;
+    public event EventHandler? RateLimitResolved;
 
     public RateLimitService()
     {
@@ -18,6 +19,11 @@ public class RateLimitService : IRateLimitService
     public void NotifyRateLimitHit(TimeSpan waitTime)
     {
         RateLimitHit?.Invoke(this, waitTime);
+    }
+
+    public void NotifyRateLimitResolved()
+    {
+        RateLimitResolved?.Invoke(this, EventArgs.Empty);
     }
 
     public TimeSpan GetTimeUntilReset()

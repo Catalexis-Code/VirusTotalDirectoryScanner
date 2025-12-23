@@ -233,7 +233,16 @@ public class DirectoryScannerService : IDisposable
                 }, token);
             }
 
+            void OnRateLimitResolved(object? sender, EventArgs e)
+            {
+                countdownCts?.Cancel();
+                result.Message = ""; 
+                ScanResultUpdated?.Invoke(this, result);
+            }
+
             _rateLimitService.RateLimitHit += OnRateLimitHit;
+            _rateLimitService.RateLimitResolved += OnRateLimitResolved;
+
             (ScanResultStatus Status, int DetectionCount, string Hash, string? Message) scanResult;
             try
             {
@@ -242,6 +251,7 @@ public class DirectoryScannerService : IDisposable
             finally
             {
                 _rateLimitService.RateLimitHit -= OnRateLimitHit;
+                _rateLimitService.RateLimitResolved -= OnRateLimitResolved;
                 countdownCts?.Cancel();
                 result.Message = ""; // Clear message
                 ScanResultUpdated?.Invoke(this, result);

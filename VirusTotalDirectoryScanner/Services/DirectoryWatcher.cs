@@ -15,6 +15,18 @@ public class DirectoryWatcher : IDirectoryWatcher
         remove => _watcher.Created -= value;
     }
 
+    public event RenamedEventHandler Renamed
+    {
+        add => _watcher.Renamed += value;
+        remove => _watcher.Renamed -= value;
+    }
+
+    public event FileSystemEventHandler Changed
+    {
+        add => _watcher.Changed += value;
+        remove => _watcher.Changed -= value;
+    }
+
     public bool EnableRaisingEvents
     {
         get => _watcher.EnableRaisingEvents;

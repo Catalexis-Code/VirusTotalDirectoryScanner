@@ -38,7 +38,7 @@ public class DirectoryScannerService : IDisposable
         _watcherFactory = watcherFactory;
         _rateLimitService = rateLimitService;
         
-        _lockedFileTimer = new Timer(30000); // 30 seconds
+        _lockedFileTimer = new Timer(5000); // 5 seconds
         _lockedFileTimer.Elapsed += OnLockedFileTimerElapsed;
         _lockedFileTimer.AutoReset = true;
     }
@@ -68,6 +68,8 @@ public class DirectoryScannerService : IDisposable
 
         _watcher = _watcherFactory.Create(settings.Paths.ScanDirectory);
         _watcher.Created += OnFileCreated;
+        _watcher.Renamed += OnRenamed;
+        _watcher.Changed += OnChanged;
         _watcher.EnableRaisingEvents = true;
 
         _processingTask = Task.Run(ProcessQueueAsync);
@@ -99,21 +101,28 @@ public class DirectoryScannerService : IDisposable
 
     private void EnqueueFile(string fullPath)
     {
-        var settings = _settingsService.CurrentSettings;
-        if (!string.IsNullOrEmpty(settings.Paths.LogFilePath) && 
-            string.Equals(Path.GetFullPath(fullPath), Path.GetFullPath(settings.Paths.LogFilePath), StringComparison.OrdinalIgnoreCase))
+        // Add a small delay to allow browser rename operations to complete
+        // This helps prevent "ghost" files (intermediate GUIDs) from being picked up immediately
+        Task.Run(async () =>
         {
-            return;
-        }
+            await Task.Delay(2000);
+            
+            var settings = _settingsService.CurrentSettings;
+            if (!string.IsNullOrEmpty(settings.Paths.LogFilePath) && 
+                string.Equals(Path.GetFullPath(fullPath), Path.GetFullPath(settings.Paths.LogFilePath), StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
 
-        _fileQueue.Enqueue(fullPath);
-        
-        // Notify UI of pending file
-        ScanResultUpdated?.Invoke(this, new ScanResult 
-        { 
-            FileName = Path.GetFileName(fullPath), 
-            FullPath = fullPath, 
-            Status = ScanStatus.Pending 
+            _fileQueue.Enqueue(fullPath);
+            
+            // Notify UI of pending file
+            ScanResultUpdated?.Invoke(this, new ScanResult 
+            { 
+                FileName = Path.GetFileName(fullPath), 
+                FullPath = fullPath, 
+                Status = ScanStatus.Pending 
+            });
         });
     }
 
@@ -134,6 +143,19 @@ public class DirectoryScannerService : IDisposable
 
     private async Task ProcessFileAsync(string filePath)
     {
+        // Check if file still exists (it might have been renamed/deleted during the delay)
+        if (!_fileOperationsService.FileExists(filePath))
+        {
+             // If it's gone, notify UI to remove it (in case we sent a Pending status)
+            ScanResultUpdated?.Invoke(this, new ScanResult 
+            { 
+                FileName = Path.GetFileName(filePath), 
+                FullPath = filePath, 
+                Status = ScanStatus.Removed 
+            });
+            return;
+        }
+
         var fileName = Path.GetFileName(filePath);
         var result = new ScanResult 
         { 
@@ -263,6 +285,48 @@ public class DirectoryScannerService : IDisposable
         ScanResultUpdated?.Invoke(this, result);
     }
 
+    private void OnRenamed(object sender, RenamedEventArgs e)
+    {
+        // If the old file was locked, remove it from the locked list
+        bool wasLocked = _lockedFiles.TryRemove(e.OldFullPath, out _);
+        
+        Log($"File renamed: {e.OldName} -> {e.Name} (WasLocked: {wasLocked})");
+
+        // Notify UI that the old file is now this new file
+        // This will update the existing row if found
+        ScanResultUpdated?.Invoke(this, new ScanResult 
+        { 
+            FileName = e.Name, 
+            FullPath = e.FullPath, 
+            OriginalFullPath = e.OldFullPath, // Link to the old file
+            Status = ScanStatus.Pending,
+            Message = "Renamed"
+        });
+        
+        // Enqueue the new file name for scanning (if it wasn't just a simple rename)
+        // Actually, if we just updated the status to Pending above, we might want to ensure it gets processed.
+        // But EnqueueFile pushes to _fileQueue which is picked up by ProcessQueueAsync.
+        // We probably don't need to update UI with "Pending" above AND enqueue, but "Pending" provides immediate feedback.
+        
+        EnqueueFile(e.FullPath);
+    }
+
+    private void OnChanged(object sender, FileSystemEventArgs e)
+    {
+        // If this file is in our locked list, check if it's unlocked now
+        if (_lockedFiles.ContainsKey(e.FullPath))
+        {
+            if (!_fileOperationsService.IsFileLocked(e.FullPath))
+            {
+                if (_lockedFiles.TryRemove(e.FullPath, out _))
+                {
+                    Log($"Locked file changed and unlocked: {e.Name}. Re-queuing.");
+                    _fileQueue.Enqueue(e.FullPath);
+                }
+            }
+        }
+    }
+
     private void OnLockedFileTimerElapsed(object? sender, ElapsedEventArgs e)
     {
         if (_lockedFiles.IsEmpty)
@@ -277,7 +341,18 @@ public class DirectoryScannerService : IDisposable
             if (!_fileOperationsService.FileExists(filePath))
             {
                 // File gone? Remove from locked list
-                _lockedFiles.TryRemove(filePath, out _);
+                if (_lockedFiles.TryRemove(filePath, out _))
+                {
+                    Log($"Locked file disappeared: {Path.GetFileName(filePath)}");
+                    // Update UI to remove the "Pending (Locked)" state
+                    ScanResultUpdated?.Invoke(this, new ScanResult 
+                    { 
+                        FileName = Path.GetFileName(filePath), 
+                        FullPath = filePath, 
+                        Status = ScanStatus.Removed, 
+                        Message = "File disappeared" 
+                    });
+                }
                 continue;
             }
 
@@ -286,7 +361,7 @@ public class DirectoryScannerService : IDisposable
                 // Unlocked! Move back to queue
                 if (_lockedFiles.TryRemove(filePath, out _))
                 {
-                    Log($"File unlocked: {Path.GetFileName(filePath)}. Re-queuing.");
+                    Log($"File unlocked (timer): {Path.GetFileName(filePath)}. Re-queuing.");
                     _fileQueue.Enqueue(filePath);
                 }
             }

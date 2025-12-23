@@ -12,7 +12,8 @@ public enum ScanStatus
     Clean,
     Compromised,
     Failed,
-    Skipped
+    Skipped,
+    Removed
 }
 
 public class ScanResult : INotifyPropertyChanged
@@ -24,6 +25,7 @@ public class ScanResult : INotifyPropertyChanged
 
     public string FileName { get; set; } = string.Empty;
     public string FullPath { get; set; } = string.Empty;
+    public string OriginalFullPath { get; set; } = string.Empty;
     
     public string Message
     {

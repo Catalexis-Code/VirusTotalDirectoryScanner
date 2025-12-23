@@ -150,7 +150,35 @@ public partial class MainWindowViewModel : ObservableObject
     {
         Dispatcher.UIThread.InvokeAsync(() =>
         {
-            var existing = ScanResults.FirstOrDefault(r => r.FullPath == result.FullPath);
+            // Handle removal
+            if (result.Status == ScanStatus.Removed)
+            {
+                var itemToRemove = ScanResults.FirstOrDefault(r => r.FullPath.Equals(result.FullPath, StringComparison.OrdinalIgnoreCase));
+                if (itemToRemove != null)
+                {
+                    ScanResults.Remove(itemToRemove);
+                }
+                return;
+            }
+
+            // Handle rename (update existing item by OriginalFullPath)
+            if (!string.IsNullOrEmpty(result.OriginalFullPath))
+            {
+                var renamedItem = ScanResults.FirstOrDefault(r => r.FullPath.Equals(result.OriginalFullPath, StringComparison.OrdinalIgnoreCase));
+                if (renamedItem != null)
+                {
+                    // Update the existing item to point to the new file
+                    renamedItem.FileName = result.FileName;
+                    renamedItem.FullPath = result.FullPath; // This effectively "renames" it in our list
+                    renamedItem.Status = result.Status;
+                    renamedItem.DetectionCount = result.DetectionCount;
+                    renamedItem.FileHash = result.FileHash;
+                    renamedItem.Message = result.Message;
+                    return;
+                }
+            }
+
+            var existing = ScanResults.FirstOrDefault(r => r.FullPath.Equals(result.FullPath, StringComparison.OrdinalIgnoreCase));
             if (existing != null)
             {
                 existing.Status = result.Status;

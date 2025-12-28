@@ -76,16 +76,22 @@
                 <TextBlock Text="Files matching these patterns will be ignored by the scanner. Supports * wildcards." FontSize="12" Foreground="Gray" TextWrapping="Wrap" />
             </StackPanel>
             
-            <ListBox Grid.Row="1" ItemsSource="{Binding Exclusions}" Margin="0,8" BorderThickness="1" BorderBrush="#E0E0E0" Background="White">
-                <ListBox.ItemTemplate>
-                    <DataTemplate>
-                        <Grid ColumnDefinitions="*, Auto">
-                            <TextBlock Text="{Binding}" VerticalAlignment="Center" Margin="8,0" />
-                            <Button Grid.Column="1" Content="Remove" Click="RemoveExclusion_Click" Tag="{Binding}" Background="Transparent" Foreground="Red" BorderThickness="0" Margin="4" Cursor="Hand"/>
-                        </Grid>
-                    </DataTemplate>
-                </ListBox.ItemTemplate>
-            </ListBox>
+            <Border Grid.Row="1" Margin="0,8" BorderThickness="1" BorderBrush="#E0E0E0" Background="White">
+                <ScrollViewer>
+                    <ItemsControl ItemsSource="{Binding Exclusions}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Padding="12,4">
+                                    <Grid ColumnDefinitions="*, Auto">
+                                        <TextBlock Text="{Binding}" VerticalAlignment="Center" />
+                                        <Button Grid.Column="1" Content="Remove" Click="RemoveExclusion_Click" Tag="{Binding}" Background="Transparent" Foreground="Red" BorderThickness="0" Margin="4,0" Cursor="Hand"/>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Border>
             
             <Grid Grid.Row="2" ColumnDefinitions="*, Auto">
                 <TextBox x:Name="ExclusionTextBox" Text="{Binding NewExclusionPattern, Mode=TwoWay}" Watermark="Enter file pattern (e.g. *.tmp)" KeyDown="NewExclusionPattern_KeyDown" />

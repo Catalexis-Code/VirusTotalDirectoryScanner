@@ -12,7 +12,7 @@
   <Grid Margin="16" RowDefinitions="Auto,*,Auto" RowSpacing="12">
     <TextBlock FontSize="20" FontWeight="SemiBold" Text="Settings" />
 
-    <TabStrip Grid.Row="1" SelectedIndex="{Binding SelectedTabIndex}">
+    <TabStrip Grid.Row="1" SelectedIndex="{Binding SelectedTabIndex}" KeyboardNavigation.TabNavigation="Once">
       <TabStripItem Content="VirusTotal API" />
       <TabStripItem Content="Paths" />
       <TabStripItem Content="Settings Store" />

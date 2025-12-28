@@ -7,6 +7,7 @@ public class DirectoryWatcher : IDirectoryWatcher
     public DirectoryWatcher(string path)
     {
         _watcher = new FileSystemWatcher(path);
+        _watcher.InternalBufferSize = 65536; // 64KB
     }
 
     public event FileSystemEventHandler Created
@@ -25,6 +26,12 @@ public class DirectoryWatcher : IDirectoryWatcher
     {
         add => _watcher.Changed += value;
         remove => _watcher.Changed -= value;
+    }
+
+    public event ErrorEventHandler Error
+    {
+        add => _watcher.Error += value;
+        remove => _watcher.Error -= value;
     }
 
     public bool EnableRaisingEvents

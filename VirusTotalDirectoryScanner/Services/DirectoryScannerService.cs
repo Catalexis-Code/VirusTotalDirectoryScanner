@@ -66,20 +66,52 @@ public class DirectoryScannerService : IDisposable
             }
         }
 
-        _watcher = _watcherFactory.Create(settings.Paths.ScanDirectory);
-        _watcher.Created += OnFileCreated;
-        _watcher.Renamed += OnRenamed;
-        _watcher.Changed += OnChanged;
-        _watcher.EnableRaisingEvents = true;
+        SetupWatcher();
 
         _processingTask = Task.Run(ProcessQueueAsync);
         LogMessage?.Invoke(this, $"Started monitoring {settings.Paths.ScanDirectory}");
         
-        // Process existing files
+        ScanExistingFiles();
+    }
+
+    private void SetupWatcher()
+    {
+        try
+        {
+            if (_watcher != null)
+            {
+                _watcher.Dispose();
+                _watcher = null;
+            }
+
+            var settings = _settingsService.CurrentSettings;
+            _watcher = _watcherFactory.Create(settings.Paths.ScanDirectory);
+            _watcher.Created += OnFileCreated;
+            _watcher.Renamed += OnRenamed;
+            _watcher.Changed += OnChanged;
+            _watcher.Error += OnWatcherError;
+            _watcher.EnableRaisingEvents = true;
+        }
+        catch (Exception ex)
+        {
+            LogMessage?.Invoke(this, $"Failed to setup file watcher: {ex.Message}");
+        }
+    }
+
+    private void OnWatcherError(object sender, ErrorEventArgs e)
+    {
+        LogMessage?.Invoke(this, $"File Watcher Error: {e.GetException().Message}. Restarting watcher...");
+        SetupWatcher();
+        ScanExistingFiles();
+    }
+
+    private void ScanExistingFiles()
+    {
         Task.Run(() => 
         {
             try
             {
+                var settings = _settingsService.CurrentSettings;
                 var files = _fileOperationsService.GetFiles(settings.Paths.ScanDirectory);
                 LogMessage?.Invoke(this, $"Found {files.Length} existing files.");
                 foreach (var file in files)

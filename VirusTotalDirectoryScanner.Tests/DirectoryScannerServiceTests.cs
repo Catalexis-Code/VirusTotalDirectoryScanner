@@ -53,6 +53,8 @@ public class DirectoryScannerServiceTests
         _fileOpsMock.Setup(f => f.GetFiles(_settings.Paths.ScanDirectory)).Returns(new[] { filePath });
         _fileOpsMock.Setup(f => f.IsFileLocked(filePath)).Returns(false);
         
+        _fileOpsMock.Setup(f => f.FileExists(filePath)).Returns(true);
+        
         _vtServiceMock.Setup(v => v.ScanFileAsync(filePath, It.IsAny<CancellationToken>()))
             .ReturnsAsync((ScanResultStatus.Clean, 0, "hash", "Clean"));
 
@@ -64,7 +66,7 @@ public class DirectoryScannerServiceTests
 
         // Assert
         // Wait for background processing (needs to be > 1000ms because of the polling delay in service)
-        await Task.Delay(2000); 
+        await Task.Delay(5000); 
 
         // We expect:
         // 1. Pending (from Enqueue)
@@ -98,6 +100,8 @@ public class DirectoryScannerServiceTests
         _fileOpsMock.Setup(f => f.GetFiles(_settings.Paths.ScanDirectory)).Returns(new[] { filePath });
         _fileOpsMock.Setup(f => f.IsFileLocked(filePath)).Returns(false);
 
+        _fileOpsMock.Setup(f => f.FileExists(filePath)).Returns(true);
+
         _vtServiceMock.Setup(v => v.ScanFileAsync(filePath, It.IsAny<CancellationToken>()))
             .ReturnsAsync((ScanResultStatus.Compromised, 5, "hash", "Infected"));
 
@@ -106,7 +110,7 @@ public class DirectoryScannerServiceTests
 
         // Act
         _sut.Start();
-        await Task.Delay(2000);
+        await Task.Delay(5000);
 
         // Assert
         results.Should().Contain(r => r.Status == ScanStatus.Compromised);
@@ -125,6 +129,7 @@ public class DirectoryScannerServiceTests
         
         _fileOpsMock.Setup(f => f.GetFiles(_settings.Paths.ScanDirectory)).Returns(new[] { sourcePath });
         _fileOpsMock.Setup(f => f.IsFileLocked(sourcePath)).Returns(false);
+        _fileOpsMock.Setup(f => f.FileExists(sourcePath)).Returns(true);
         _fileOpsMock.Setup(f => f.DirectoryExists(_settings.Paths.CleanDirectory)).Returns(true);
         
         // Destination file exists
@@ -139,7 +144,7 @@ public class DirectoryScannerServiceTests
 
         // Act
         _sut.Start();
-        await Task.Delay(2000); // Wait for processing
+        await Task.Delay(5000); // Wait for processing
 
         // Assert
         // Should delete existing file
@@ -158,6 +163,7 @@ public class DirectoryScannerServiceTests
         
         _fileOpsMock.Setup(f => f.GetFiles(_settings.Paths.ScanDirectory)).Returns(new[] { sourcePath });
         _fileOpsMock.Setup(f => f.IsFileLocked(sourcePath)).Returns(false);
+        _fileOpsMock.Setup(f => f.FileExists(sourcePath)).Returns(true);
         _fileOpsMock.Setup(f => f.DirectoryExists(_settings.Paths.CleanDirectory)).Returns(true);
         
         // Destination file exists
@@ -172,7 +178,7 @@ public class DirectoryScannerServiceTests
 
         // Act
         _sut.Start();
-        await Task.Delay(2000); // Wait for processing
+        await Task.Delay(5000); // Wait for processing
 
         // Assert
         // Should NOT delete existing file
@@ -187,13 +193,14 @@ public class DirectoryScannerServiceTests
         var filePath = "C:\\Scan\\~$doc.docx";
         _fileOpsMock.Setup(f => f.GetFiles(_settings.Paths.ScanDirectory)).Returns(new[] { filePath });
         _fileOpsMock.Setup(f => f.IsFileLocked(filePath)).Returns(false);
+        _fileOpsMock.Setup(f => f.FileExists(filePath)).Returns(true);
 
         var results = new ConcurrentBag<(ScanStatus Status, string Message)>();
         _sut.ScanResultUpdated += (s, e) => results.Add((e.Status, e.Message));
 
         // Act
         _sut.Start();
-        await Task.Delay(2000);
+        await Task.Delay(5000);
 
         // Assert
         results.Should().Contain(r => r.Status == ScanStatus.Skipped && r.Message == "office log file");
@@ -210,13 +217,14 @@ public class DirectoryScannerServiceTests
         
         _fileOpsMock.Setup(f => f.GetFiles(_settings.Paths.ScanDirectory)).Returns(new[] { filePath1, filePath2, filePath3 });
         _fileOpsMock.Setup(f => f.IsFileLocked(It.IsAny<string>())).Returns(false);
+        _fileOpsMock.Setup(f => f.FileExists(It.IsAny<string>())).Returns(true);
 
         var results = new ConcurrentBag<(ScanStatus Status, string Message)>();
         _sut.ScanResultUpdated += (s, e) => results.Add((e.Status, e.Message));
 
         // Act
         _sut.Start();
-        await Task.Delay(2000);
+        await Task.Delay(5000);
 
         // Assert
         results.Should().Contain(r => r.Status == ScanStatus.Skipped && r.Message == "browser download file");

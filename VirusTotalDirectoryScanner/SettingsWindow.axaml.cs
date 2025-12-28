@@ -6,6 +6,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Avalonia.VisualTree;
+using Avalonia.Platform.Storage;
 using VirusTotalDirectoryScanner.Helpers;
 using VirusTotalDirectoryScanner.Settings;
 
@@ -13,44 +14,44 @@ namespace VirusTotalDirectoryScanner;
 
 public sealed partial class SettingsWindow : Window
 {
-	public SettingsWindow()
-	{
-		InitializeComponent();
-	}
+    public SettingsWindow()
+    {
+        InitializeComponent();
+    }
 
-	private void InitializeComponent()
-		=> AvaloniaXamlLoader.Load(this);
+    private void InitializeComponent()
+        => AvaloniaXamlLoader.Load(this);
 
-	protected override void OnOpened(EventArgs e)
-	{
-		base.OnOpened(e);
+    protected override void OnOpened(EventArgs e)
+    {
+        base.OnOpened(e);
 
-		// Attach input validation to all NumericUpDown controls
-		foreach (var numericUpDown in this.GetVisualDescendants().OfType<NumericUpDown>())
-		{
-			numericUpDown.AddHandler(TextInputEvent, OnNumericInput, RoutingStrategies.Tunnel);
-		}
+        // Attach input validation to all NumericUpDown controls
+        foreach (var numericUpDown in this.GetVisualDescendants().OfType<NumericUpDown>())
+        {
+            numericUpDown.AddHandler(TextInputEvent, OnNumericInput, RoutingStrategies.Tunnel);
+        }
 
-		if (DataContext is SettingsDialogViewModel vm)
-		{
-			if (string.IsNullOrWhiteSpace(vm.ApiKey) || vm.ApiKey == "REPLACE_WITH_REAL_KEY")
-			{
-				var textBox = this.FindControl<TextBox>("ApiKeyTextBox");
-				textBox?.Focus();
-			}
-		}
-	}
+        if (DataContext is SettingsDialogViewModel vm)
+        {
+            if (string.IsNullOrWhiteSpace(vm.ApiKey) || vm.ApiKey == "REPLACE_WITH_REAL_KEY")
+            {
+                var textBox = this.FindControl<TextBox>("ApiKeyTextBox");
+                textBox?.Focus();
+            }
+        }
+    }
 
-	private void Cancel_Click(object? sender, RoutedEventArgs e)
-		=> Close(false);
+    private void Cancel_Click(object? sender, RoutedEventArgs e)
+        => Close(false);
 
-	private void ToggleApiKey_Click(object? sender, RoutedEventArgs e)
-	{
-		if (DataContext is SettingsDialogViewModel vm)
-		{
-			vm.ToggleApiKeyVisibility();
-		}
-	}
+    private void ToggleApiKey_Click(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is SettingsDialogViewModel vm)
+        {
+            vm.ToggleApiKeyVisibility();
+        }
+    }
 
     private void OpenRegistrationUrl_Click(object? sender, RoutedEventArgs e)
     {
@@ -68,48 +69,47 @@ public sealed partial class SettingsWindow : Window
         }
     }
 
-	private async void Save_Click(object? sender, RoutedEventArgs e)
-	{
-		if (DataContext is not SettingsDialogViewModel vm)
-		{
-			Close(false);
-			return;
-		}
+    private async void Save_Click(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not SettingsDialogViewModel vm)
+        {
+            Close(false);
+            return;
+        }
 
-		bool saved = await vm.SaveAsync();
-		if (saved)
-		{
-			Close(true);
-		}
-	}
+        bool saved = await vm.SaveAsync();
+        if (saved)
+        {
+            Close(true);
+        }
+    }
 
-	private void OnNumericInput(object? sender, TextInputEventArgs e)
-	{
-		if (!InputValidators.IsNumeric(e.Text))
-		{
-			e.Handled = true;
-		}
-	}
+    private void OnNumericInput(object? sender, TextInputEventArgs e)
+    {
+        if (!InputValidators.IsNumeric(e.Text))
+        {
+            e.Handled = true;
+        }
+    }
 
-	private void AddExclusion_Click(object? sender, RoutedEventArgs e)
-	{
-		if (DataContext is SettingsDialogViewModel vm)
-		{
-			vm.AddExclusion();
-            // Focus back on textbox
+    private void AddExclusion_Click(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is SettingsDialogViewModel vm)
+        {
+            vm.AddExclusion();
             this.FindControl<TextBox>("ExclusionTextBox")?.Focus();
-		}
-	}
+        }
+    }
 
-	private void RemoveExclusion_Click(object? sender, RoutedEventArgs e)
-	{
-		if (DataContext is SettingsDialogViewModel vm && 
-			sender is Button button && 
-			button.Tag is string pattern)
-		{
+    private void RemoveExclusion_Click(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is SettingsDialogViewModel vm &&
+            sender is Button button &&
+            button.Tag is string pattern)
+        {
             RemoveExclusionWithFocusLogic(vm, pattern);
-		}
-	}
+        }
+    }
 
     private void ExclusionsListBox_KeyDown(object? sender, KeyEventArgs e)
     {
@@ -134,7 +134,6 @@ public sealed partial class SettingsWindow : Window
         }
 
         int selectedIndex = listBox.SelectedIndex;
-        // If nothing is selected but we clicked a button, find the index of that item
         if (selectedIndex == -1)
         {
             selectedIndex = vm.Exclusions.IndexOf(pattern);
@@ -144,10 +143,8 @@ public sealed partial class SettingsWindow : Window
 
         if (vm.Exclusions.Count > 0)
         {
-            // Try to keep same index, or move to the one above if we removed the last item
             int newIndex = Math.Min(selectedIndex, vm.Exclusions.Count - 1);
             if (newIndex < 0) newIndex = 0;
-            
             listBox.SelectedIndex = newIndex;
             listBox.Focus();
         }
@@ -162,6 +159,78 @@ public sealed partial class SettingsWindow : Window
                 vm.AddExclusion();
                 this.FindControl<TextBox>("ExclusionTextBox")?.Focus();
             }
+        }
+    }
+
+    // New method to handle folder selection
+    private async void SelectFolder_Click(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Button button || button.Tag is not string tag)
+            return;
+
+        var storage = this.StorageProvider;
+        var options = new FolderPickerOpenOptions
+        {
+            Title = "Select Folder",
+            AllowMultiple = false
+        };
+        var result = await storage.OpenFolderPickerAsync(options);
+        if (result?.Count == 0)
+            return;
+
+        var folder = result[0];
+        string? path = folder.Path?.AbsolutePath ?? folder.TryGetLocalPath();
+        if (string.IsNullOrEmpty(path))
+            return;
+
+        if (DataContext is SettingsDialogViewModel vm)
+        {
+            switch (tag)
+            {
+                case "ScanDirectory":
+                    vm.ScanDirectory = path;
+                    break;
+                case "CleanDirectory":
+                    vm.CleanDirectory = path;
+                    break;
+                case "CompromisedDirectory":
+                    vm.CompromisedDirectory = path;
+                    break;
+            }
+        }
+    }
+
+    // New method to handle file selection (log file)
+    private async void SelectFile_Click(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not Button button || button.Tag is not string tag)
+            return;
+
+        var storage = this.StorageProvider;
+        var options = new FilePickerOpenOptions
+        {
+            Title = "Select Log File",
+            AllowMultiple = false,
+            FileTypeFilter = new[]
+            {
+                new FilePickerFileType("Log Files")
+                {
+                    Patterns = new[] { "*.log" }
+                }
+            }
+        };
+        var result = await storage.OpenFilePickerAsync(options);
+        if (result?.Count == 0)
+            return;
+
+        var file = result[0];
+        string? path = file.Path?.AbsolutePath ?? file.TryGetLocalPath();
+        if (string.IsNullOrEmpty(path))
+            return;
+
+        if (DataContext is SettingsDialogViewModel vm && tag == "LogFilePath")
+        {
+            vm.LogFilePath = path;
         }
     }
 }

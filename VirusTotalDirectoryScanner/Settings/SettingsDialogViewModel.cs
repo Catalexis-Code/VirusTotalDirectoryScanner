@@ -19,6 +19,7 @@ internal sealed class SettingsDialogViewModel : INotifyPropertyChanged
 	private int _usedThisMonth;
 	private string? _errorMessage;
 	private string? _newExclusionPattern;
+	private int _selectedTabIndex;
 	private ObservableCollection<string> _exclusions = new();
 
 	public event PropertyChangedEventHandler? PropertyChanged;
@@ -146,6 +147,12 @@ internal sealed class SettingsDialogViewModel : INotifyPropertyChanged
 	{
 		get => _errorMessage;
 		private set => SetProperty(ref _errorMessage, value);
+	}
+
+	public int SelectedTabIndex
+	{
+		get => _selectedTabIndex;
+		set => SetProperty(ref _selectedTabIndex, value);
 	}
 
 	private SettingsDialogViewModel(string userSettingsFilePath, string? userSecretsFilePath)

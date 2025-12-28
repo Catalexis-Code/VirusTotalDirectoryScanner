@@ -1,16 +1,27 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:helpers="using:VirusTotalDirectoryScanner.Helpers"
         x:Class="VirusTotalDirectoryScanner.SettingsWindow"
         Title="Settings"
         WindowStartupLocation="CenterOwner"
         Width="720"
         Height="520">
+  <Window.Resources>
+    <helpers:SelectedIndexToVisibleConverter x:Key="SelectedIndexToVisibleConverter" />
+  </Window.Resources>
   <Grid Margin="16" RowDefinitions="Auto,*,Auto" RowSpacing="12">
     <TextBlock FontSize="20" FontWeight="SemiBold" Text="Settings" />
 
-    <TabControl Grid.Row="1" IsTabStop="True">
-      <TabItem Header="VirusTotal API" IsTabStop="True">
-        <ScrollViewer>
+    <TabStrip Grid.Row="1" SelectedIndex="{Binding SelectedTabIndex}">
+      <TabStripItem Content="VirusTotal API" />
+      <TabStripItem Content="Paths" />
+      <TabStripItem Content="Settings Store" />
+    </TabStrip>
+
+    <Border Grid.Row="1" BorderThickness="0,1,0,0" BorderBrush="LightGray" Margin="0,40,0,0">
+      <Panel>
+        <!-- VirusTotal API Tab -->
+        <ScrollViewer IsVisible="{Binding SelectedTabIndex, Converter={StaticResource SelectedIndexToVisibleConverter}, ConverterParameter=0}">
           <StackPanel Margin="8" Spacing="8">
             <TextBlock Text="API Key (stored in User Secrets)" FontWeight="SemiBold" />
             <StackPanel Orientation="Vertical" Spacing="2">
@@ -45,10 +56,9 @@
             </Grid>
           </StackPanel>
         </ScrollViewer>
-      </TabItem>
 
-      <TabItem Header="Paths" IsTabStop="True">
-        <ScrollViewer>
+        <!-- Paths Tab -->
+        <ScrollViewer IsVisible="{Binding SelectedTabIndex, Converter={StaticResource SelectedIndexToVisibleConverter}, ConverterParameter=1}">
           <StackPanel Margin="8" Spacing="8">
             <TextBlock Text="Scan directory" FontWeight="SemiBold" />
             <TextBlock Text="The directory where files are dropped to be scanned." TextWrapping="Wrap" FontSize="12" Foreground="Gray" />
@@ -79,10 +89,9 @@
             </Grid>
           </StackPanel>
         </ScrollViewer>
-      </TabItem>
 
-      <TabItem Header="Settings Store" IsTabStop="True">
-        <ScrollViewer>
+        <!-- Settings Store Tab -->
+        <ScrollViewer IsVisible="{Binding SelectedTabIndex, Converter={StaticResource SelectedIndexToVisibleConverter}, ConverterParameter=2}">
           <StackPanel Margin="8" Spacing="8">
             <TextBlock Text="User Secrets File" FontWeight="SemiBold" />
             <TextBlock Text="This file stores sensitive information like your API Key. It is stored in your user profile directory to keep it separate from the application code." TextWrapping="Wrap" FontSize="12" Foreground="Gray" />
@@ -95,8 +104,8 @@
             <TextBox Text="{Binding UserSettingsFilePath}" IsReadOnly="True" AutomationProperties.Name="User Settings File" />
           </StackPanel>
         </ScrollViewer>
-      </TabItem>
-    </TabControl>
+      </Panel>
+    </Border>
 
     <Grid Grid.Row="2" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8" VerticalAlignment="Center">
       <TextBlock Text="{Binding ErrorMessage}" Foreground="Red" VerticalAlignment="Center" />

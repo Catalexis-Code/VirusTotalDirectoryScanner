@@ -1,6 +1,12 @@
 # VirusTotalDirectoryScanner
 
-**VirusTotalDirectoryScanner** is a robust desktop application built with **.NET 10** and **Avalonia UI** that automates the process of scanning files for malware. It monitors a specific directory, automatically uploads new files to [VirusTotal](https://www.virustotal.com/), and sorts them into "Clean" or "Compromised" folders based on the scan results.
+**VirusTotalDirectoryScanner** is a robust desktop application built with **.NET 10** and **Avalonia UI** that automates the process of scanning files for malware. It monitors a specific directory (we recommend that you configure it to your downloads directory), automatically uploads new files to [VirusTotal](https://www.virustotal.com/), and sorts them into "Clean" or "Compromised" folders based on the scan results.
+
+## About VirusTotal
+
+## What is Virus Total? 
+**VirusTotal** is a free cloud-based malware scanning service that checks files using dozens of antivirus engines. It helps detect threats missed by single tools, provides quick results, and leverages community data for improved accuracy. Integrating it ensures a fast, reliable, and comprehensive way to verify file safety.
+
 
 ## 🚀 Features
 

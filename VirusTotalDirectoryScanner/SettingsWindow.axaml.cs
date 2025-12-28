@@ -107,9 +107,51 @@ public sealed partial class SettingsWindow : Window
 			sender is Button button && 
 			button.Tag is string pattern)
 		{
-			vm.RemoveExclusion(pattern);
+            RemoveExclusionWithFocusLogic(vm, pattern);
 		}
 	}
+
+    private void ExclusionsListBox_KeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Delete || e.Key == Key.Back)
+        {
+            var listBox = this.FindControl<ListBox>("ExclusionsListBox");
+            if (DataContext is SettingsDialogViewModel vm && listBox?.SelectedItem is string pattern)
+            {
+                RemoveExclusionWithFocusLogic(vm, pattern);
+                e.Handled = true;
+            }
+        }
+    }
+
+    private void RemoveExclusionWithFocusLogic(SettingsDialogViewModel vm, string pattern)
+    {
+        var listBox = this.FindControl<ListBox>("ExclusionsListBox");
+        if (listBox == null)
+        {
+            vm.RemoveExclusion(pattern);
+            return;
+        }
+
+        int selectedIndex = listBox.SelectedIndex;
+        // If nothing is selected but we clicked a button, find the index of that item
+        if (selectedIndex == -1)
+        {
+            selectedIndex = vm.Exclusions.IndexOf(pattern);
+        }
+
+        vm.RemoveExclusion(pattern);
+
+        if (vm.Exclusions.Count > 0)
+        {
+            // Try to keep same index, or move to the one above if we removed the last item
+            int newIndex = Math.Min(selectedIndex, vm.Exclusions.Count - 1);
+            if (newIndex < 0) newIndex = 0;
+            
+            listBox.SelectedIndex = newIndex;
+            listBox.Focus();
+        }
+    }
 
     private void NewExclusionPattern_KeyDown(object? sender, KeyEventArgs e)
     {

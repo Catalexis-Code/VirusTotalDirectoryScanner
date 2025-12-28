@@ -25,6 +25,16 @@ public class DirectoryScannerService : IDisposable
     private readonly ConcurrentDictionary<string, byte> _lockedFiles = new();
     private readonly Timer _lockedFileTimer;
 
+    // Constants for default delays
+    public const int DefaultInitialDelayMs = 2000;
+    public const int DefaultQueuePollingIntervalMs = 1000;
+    public const int DefaultLockedFileCheckIntervalMs = 5000;
+
+    // Configurable delays for testing
+    internal int InitialDelayMs { get; set; } = DefaultInitialDelayMs;
+    internal int QueuePollingIntervalMs { get; set; } = DefaultQueuePollingIntervalMs;
+    internal int LockedFileCheckIntervalMs { get; set; } = DefaultLockedFileCheckIntervalMs;
+
     public DirectoryScannerService(
         IVirusTotalService vtService, 
         ISettingsService settingsService,
@@ -38,7 +48,7 @@ public class DirectoryScannerService : IDisposable
         _watcherFactory = watcherFactory;
         _rateLimitService = rateLimitService;
         
-        _lockedFileTimer = new Timer(5000); // 5 seconds
+        _lockedFileTimer = new Timer(LockedFileCheckIntervalMs);
         _lockedFileTimer.Elapsed += OnLockedFileTimerElapsed;
         _lockedFileTimer.AutoReset = true;
     }
@@ -137,7 +147,7 @@ public class DirectoryScannerService : IDisposable
         // This helps prevent "ghost" files (intermediate GUIDs) from being picked up immediately
         Task.Run(async () =>
         {
-            await Task.Delay(2000);
+            await Task.Delay(InitialDelayMs);
             
             var settings = _settingsService.CurrentSettings;
             if (!string.IsNullOrEmpty(settings.Paths.LogFilePath) && 
@@ -168,7 +178,7 @@ public class DirectoryScannerService : IDisposable
             }
             else
             {
-                await Task.Delay(1000, _cts.Token);
+                await Task.Delay(QueuePollingIntervalMs, _cts.Token);
             }
         }
     }

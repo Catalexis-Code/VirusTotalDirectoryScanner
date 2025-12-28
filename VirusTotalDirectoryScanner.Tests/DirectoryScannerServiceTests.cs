@@ -42,7 +42,26 @@ public class DirectoryScannerServiceTests
             _settingsServiceMock.Object,
             _fileOpsMock.Object,
             _watcherFactoryMock.Object,
-            _rateLimitServiceMock.Object);
+            _rateLimitServiceMock.Object)
+        {
+            InitialDelayMs = 50,
+            QueuePollingIntervalMs = 50,
+            LockedFileCheckIntervalMs = 100
+        };
+    }
+
+    private async Task WaitForScanStatus(ConcurrentBag<(ScanStatus Status, string FullPath, string Message)> results, string path, ScanStatus expectedStatus, int timeoutMs = 2000)
+    {
+        var startTime = DateTime.Now;
+        while ((DateTime.Now - startTime).TotalMilliseconds < timeoutMs)
+        {
+            if (results.Any(r => r.FullPath == path && r.Status == expectedStatus))
+            {
+                return;
+            }
+            await Task.Delay(50);
+        }
+        throw new TimeoutException($"Timed out waiting for {path} to reach status {expectedStatus}");
     }
 
     [Fact]
@@ -58,23 +77,22 @@ public class DirectoryScannerServiceTests
         _vtServiceMock.Setup(v => v.ScanFileAsync(filePath, It.IsAny<CancellationToken>()))
             .ReturnsAsync((ScanResultStatus.Clean, 0, "hash", "Clean"));
 
-        var results = new ConcurrentBag<(ScanStatus Status, string Path)>();
-        _sut.ScanResultUpdated += (s, e) => results.Add((e.Status, e.FullPath));
+        var results = new ConcurrentBag<(ScanStatus Status, string FullPath, string Message)>();
+        _sut.ScanResultUpdated += (s, e) => results.Add((e.Status, e.FullPath, e.Message));
 
         // Act
         _sut.Start();
 
         // Assert
-        // Wait for background processing (needs to be > 1000ms because of the polling delay in service)
-        await Task.Delay(5000); 
+        await WaitForScanStatus(results, filePath, ScanStatus.Clean);
 
         // We expect:
         // 1. Pending (from Enqueue)
         // 2. Scanning (from ProcessFile)
         // 3. Clean (from ProcessFile completion)
-        results.Should().Contain(r => r.Status == ScanStatus.Pending && r.Path == filePath);
-        results.Should().Contain(r => r.Status == ScanStatus.Scanning && r.Path == filePath);
-        results.Should().Contain(r => r.Status == ScanStatus.Clean && r.Path == filePath);
+        results.Should().Contain(r => r.Status == ScanStatus.Pending && r.FullPath == filePath);
+        results.Should().Contain(r => r.Status == ScanStatus.Scanning && r.FullPath == filePath);
+        results.Should().Contain(r => r.Status == ScanStatus.Clean && r.FullPath == filePath);
         
         _vtServiceMock.Verify(v => v.ScanFileAsync(filePath, It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -105,12 +123,12 @@ public class DirectoryScannerServiceTests
         _vtServiceMock.Setup(v => v.ScanFileAsync(filePath, It.IsAny<CancellationToken>()))
             .ReturnsAsync((ScanResultStatus.Compromised, 5, "hash", "Infected"));
 
-        var results = new ConcurrentBag<(ScanStatus Status, string Path)>();
-        _sut.ScanResultUpdated += (s, e) => results.Add((e.Status, e.FullPath));
+        var results = new ConcurrentBag<(ScanStatus Status, string FullPath, string Message)>();
+        _sut.ScanResultUpdated += (s, e) => results.Add((e.Status, e.FullPath, e.Message));
 
         // Act
         _sut.Start();
-        await Task.Delay(5000);
+        await WaitForScanStatus(results, filePath, ScanStatus.Compromised);
 
         // Assert
         results.Should().Contain(r => r.Status == ScanStatus.Compromised);
@@ -142,9 +160,12 @@ public class DirectoryScannerServiceTests
         _vtServiceMock.Setup(v => v.ScanFileAsync(sourcePath, It.IsAny<CancellationToken>()))
             .ReturnsAsync((ScanResultStatus.Clean, 0, "hash1", "Clean"));
 
+        var results = new ConcurrentBag<(ScanStatus Status, string FullPath, string Message)>();
+        _sut.ScanResultUpdated += (s, e) => results.Add((e.Status, e.FullPath, e.Message));
+
         // Act
         _sut.Start();
-        await Task.Delay(5000); // Wait for processing
+        await WaitForScanStatus(results, sourcePath, ScanStatus.Clean); // Wait for processing
 
         // Assert
         // Should delete existing file
@@ -176,9 +197,12 @@ public class DirectoryScannerServiceTests
         _vtServiceMock.Setup(v => v.ScanFileAsync(sourcePath, It.IsAny<CancellationToken>()))
             .ReturnsAsync((ScanResultStatus.Clean, 0, "hash1", "Clean"));
 
+        var results = new ConcurrentBag<(ScanStatus Status, string FullPath, string Message)>();
+        _sut.ScanResultUpdated += (s, e) => results.Add((e.Status, e.FullPath, e.Message));
+
         // Act
         _sut.Start();
-        await Task.Delay(5000); // Wait for processing
+        await WaitForScanStatus(results, sourcePath, ScanStatus.Clean); // Wait for processing
 
         // Assert
         // Should NOT delete existing file
@@ -195,12 +219,12 @@ public class DirectoryScannerServiceTests
         _fileOpsMock.Setup(f => f.IsFileLocked(filePath)).Returns(false);
         _fileOpsMock.Setup(f => f.FileExists(filePath)).Returns(true);
 
-        var results = new ConcurrentBag<(ScanStatus Status, string Message)>();
-        _sut.ScanResultUpdated += (s, e) => results.Add((e.Status, e.Message));
+        var results = new ConcurrentBag<(ScanStatus Status, string FullPath, string Message)>();
+        _sut.ScanResultUpdated += (s, e) => results.Add((e.Status, e.FullPath, e.Message));
 
         // Act
         _sut.Start();
-        await Task.Delay(5000);
+        await WaitForScanStatus(results, filePath, ScanStatus.Skipped);
 
         // Assert
         results.Should().Contain(r => r.Status == ScanStatus.Skipped && r.Message == "office log file");
@@ -219,12 +243,14 @@ public class DirectoryScannerServiceTests
         _fileOpsMock.Setup(f => f.IsFileLocked(It.IsAny<string>())).Returns(false);
         _fileOpsMock.Setup(f => f.FileExists(It.IsAny<string>())).Returns(true);
 
-        var results = new ConcurrentBag<(ScanStatus Status, string Message)>();
-        _sut.ScanResultUpdated += (s, e) => results.Add((e.Status, e.Message));
+        var results = new ConcurrentBag<(ScanStatus Status, string FullPath, string Message)>();
+        _sut.ScanResultUpdated += (s, e) => results.Add((e.Status, e.FullPath, e.Message));
 
         // Act
         _sut.Start();
-        await Task.Delay(5000);
+        await WaitForScanStatus(results, filePath1, ScanStatus.Skipped);
+        await WaitForScanStatus(results, filePath2, ScanStatus.Skipped);
+        await WaitForScanStatus(results, filePath3, ScanStatus.Skipped);
 
         // Assert
         results.Should().Contain(r => r.Status == ScanStatus.Skipped && r.Message == "browser download file");

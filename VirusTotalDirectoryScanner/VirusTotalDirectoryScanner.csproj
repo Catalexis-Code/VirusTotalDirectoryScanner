@@ -24,6 +24,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="VirusTotalDirectoryScanner.Tests" />
+    <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Update="appsettings.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

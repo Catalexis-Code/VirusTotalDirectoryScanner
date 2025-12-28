@@ -84,7 +84,7 @@
                                 <Border Padding="12,4">
                                     <Grid ColumnDefinitions="*, Auto">
                                         <TextBlock Text="{Binding}" VerticalAlignment="Center" />
-                                        <Button Grid.Column="1" Content="Remove" Click="RemoveExclusion_Click" Tag="{Binding}" Background="Transparent" Foreground="Red" BorderThickness="0" Margin="4,0" Cursor="Hand"/>
+                                        <Button Grid.Column="1" Content="Remove" Click="RemoveExclusion_Click" Tag="{Binding}" Background="Transparent" Foreground="Red" BorderThickness="0" Margin="4,0" Cursor="Hand" AutomationProperties.Name="{Binding, StringFormat='remove {0}'}"/>
                                     </Grid>
                                 </Border>
                             </DataTemplate>

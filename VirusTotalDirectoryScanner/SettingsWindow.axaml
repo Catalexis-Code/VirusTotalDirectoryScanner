@@ -69,6 +69,31 @@
         </ScrollViewer>
       </TabItem>
 
+      <TabItem Header="Exclusions">
+        <Grid RowDefinitions="Auto, *, Auto" Margin="8">
+            <StackPanel Spacing="4">
+                <TextBlock Text="File Exclusion Patterns" FontWeight="SemiBold" />
+                <TextBlock Text="Files matching these patterns will be ignored by the scanner. Supports * wildcards." FontSize="12" Foreground="Gray" TextWrapping="Wrap" />
+            </StackPanel>
+            
+            <ListBox Grid.Row="1" ItemsSource="{Binding Exclusions}" Margin="0,8" BorderThickness="1" BorderBrush="#E0E0E0" Background="White">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <Grid ColumnDefinitions="*, Auto">
+                            <TextBlock Text="{Binding}" VerticalAlignment="Center" Margin="8,0" />
+                            <Button Grid.Column="1" Content="Remove" Click="RemoveExclusion_Click" Tag="{Binding}" Background="Transparent" Foreground="Red" BorderThickness="0" Margin="4" Cursor="Hand"/>
+                        </Grid>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+            
+            <Grid Grid.Row="2" ColumnDefinitions="*, Auto">
+                <TextBox x:Name="ExclusionTextBox" Text="{Binding NewExclusionPattern, Mode=TwoWay}" Watermark="Enter file pattern (e.g. *.tmp)" KeyDown="NewExclusionPattern_KeyDown" />
+                <Button Grid.Column="1" Content="Add" Click="AddExclusion_Click" Margin="8,0,0,0" IsDefault="False" />
+            </Grid>
+        </Grid>
+      </TabItem>
+
       <TabItem Header="Settings Store">
         <ScrollViewer>
           <StackPanel Margin="8" Spacing="8">

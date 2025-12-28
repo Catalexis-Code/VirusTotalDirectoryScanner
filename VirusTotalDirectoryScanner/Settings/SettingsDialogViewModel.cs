@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
@@ -17,6 +18,8 @@ internal sealed class SettingsDialogViewModel : INotifyPropertyChanged
 	private int _usedToday;
 	private int _usedThisMonth;
 	private string? _errorMessage;
+	private string? _newExclusionPattern;
+	private ObservableCollection<string> _exclusions = new();
 
 	public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -111,6 +114,31 @@ internal sealed class SettingsDialogViewModel : INotifyPropertyChanged
 		set => SetProperty(ref _usedThisMonth, value);
 	}
 
+	public ObservableCollection<string> Exclusions => _exclusions;
+
+	public string? NewExclusionPattern
+	{
+		get => _newExclusionPattern;
+		set => SetProperty(ref _newExclusionPattern, value);
+	}
+
+	public void AddExclusion()
+	{
+		if (!string.IsNullOrWhiteSpace(NewExclusionPattern) && !_exclusions.Contains(NewExclusionPattern))
+		{
+			_exclusions.Add(NewExclusionPattern);
+			NewExclusionPattern = string.Empty;
+		}
+	}
+
+	public void RemoveExclusion(string pattern)
+	{
+		if (_exclusions.Contains(pattern))
+		{
+			_exclusions.Remove(pattern);
+		}
+	}
+
 	public string UserSettingsFilePath { get; }
 	public string? UserSecretsFilePath { get; }
 
@@ -128,7 +156,7 @@ internal sealed class SettingsDialogViewModel : INotifyPropertyChanged
 
 	public static SettingsDialogViewModel From(Settings settings, string apiKey, string userSettingsFilePath)
 	{
-		return new SettingsDialogViewModel(userSettingsFilePath, AppConfiguration.UserSecretsFilePath)
+		var vm = new SettingsDialogViewModel(userSettingsFilePath, AppConfiguration.UserSecretsFilePath)
 		{
 			ApiKey = apiKey,
 			ScanDirectory = settings.Paths.ScanDirectory,
@@ -141,6 +169,13 @@ internal sealed class SettingsDialogViewModel : INotifyPropertyChanged
 			UsedToday = settings.Quota.UsedToday,
 			UsedThisMonth = settings.Quota.UsedThisMonth
 		};
+		
+		foreach (var exclusion in settings.FileExclusions)
+		{
+			vm.Exclusions.Add(exclusion);
+		}
+		
+		return vm;
 	}
 
 	public Settings ToSettings()
@@ -161,7 +196,8 @@ internal sealed class SettingsDialogViewModel : INotifyPropertyChanged
 				CleanDirectory = CleanDirectory,
 				CompromisedDirectory = CompromisedDirectory,
 				LogFilePath = LogFilePath
-			}
+			},
+			FileExclusions = Exclusions.ToList()
 		};
 	}
 

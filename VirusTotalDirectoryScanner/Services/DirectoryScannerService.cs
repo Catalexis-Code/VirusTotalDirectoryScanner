@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Timers;
 using VirusTotalDirectoryScanner.Models;
 using VirusTotalDirectoryScanner.Settings;
+using System.IO.Enumeration;
 using Timer = System.Timers.Timer;
 
 namespace VirusTotalDirectoryScanner.Services;
@@ -207,25 +208,18 @@ public class DirectoryScannerService : IDisposable
         };
         ScanResultUpdated?.Invoke(this, result);
         
-        // Skip MS Office temp files
-        if (fileName.StartsWith("~$"))
+        // Check against configured exclusions
+        var settings = _settingsService.CurrentSettings;
+        foreach (var pattern in settings.FileExclusions)
         {
-            result.Status = ScanStatus.Skipped;
-            result.Message = "office log file";
-            Log($"Skipping file {fileName}: {result.Message}");
-            ScanResultUpdated?.Invoke(this, result);
-            return;
-        }
-
-        // Skip browser incomplete downloads
-        var extension = Path.GetExtension(fileName).ToLowerInvariant();
-        if (extension == ".crdownload" || extension == ".part" || extension == ".download")
-        {
-            result.Status = ScanStatus.Skipped;
-            result.Message = "browser download file";
-            Log($"Skipping file {fileName}: {result.Message}");
-            ScanResultUpdated?.Invoke(this, result);
-            return;
+            if (FileSystemName.MatchesSimpleExpression(pattern, fileName))
+            {
+                result.Status = ScanStatus.Skipped;
+                result.Message = "Excluded"; // Keep it short for UI
+                Log($"Skipping file {fileName}: Excluded by pattern '{pattern}'");
+                ScanResultUpdated?.Invoke(this, result);
+                return;
+            }
         }
 
         try
@@ -303,7 +297,7 @@ public class DirectoryScannerService : IDisposable
             result.FileHash = scanResult.Hash;
 
             // 3. Move and Update Status
-            var settings = _settingsService.CurrentSettings;
+
             if (scanResult.Status == ScanResultStatus.Clean)
             {
                 result.Status = ScanStatus.Clean;

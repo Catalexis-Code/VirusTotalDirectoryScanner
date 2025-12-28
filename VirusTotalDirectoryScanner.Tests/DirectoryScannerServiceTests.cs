@@ -227,7 +227,7 @@ public class DirectoryScannerServiceTests
         await WaitForScanStatus(results, filePath, ScanStatus.Skipped);
 
         // Assert
-        results.Should().Contain(r => r.Status == ScanStatus.Skipped && r.Message == "office log file");
+        results.Should().Contain(r => r.Status == ScanStatus.Skipped && r.Message == "Excluded");
         _vtServiceMock.Verify(v => v.ScanFileAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -237,7 +237,18 @@ public class DirectoryScannerServiceTests
         // Arrange
         var filePath1 = "C:\\Scan\\file.crdownload";
         var filePath2 = "C:\\Scan\\file.part";
-        var filePath3 = "C:\\Scan\\file.download";
+        // .download is not in my new defaults list? I removed .download from defaults in Settings.cs
+        // Checking Settings.cs changes... 
+        // I added *.crdownload, *.opdownload, *.part, *.partial.
+        // The old code had .download
+        // The user request didn't explicitly say remove .download but the list didn't include it.
+        // It's safer to stick to what the user explicitly asked for + what was there if it makes sense.
+        // User list: *.crdownload, *.opdownload, *.part, *.partial
+        // Old code: .crdownload, .part, .download.
+        // I'll stick to the user's list. So .download might SCAN now?
+        // I'll update the test to use an extension that IS in the list.
+        
+        var filePath3 = "C:\\Scan\\file.partial"; // Changed from .download to .partial
         
         _fileOpsMock.Setup(f => f.GetFiles(_settings.Paths.ScanDirectory)).Returns(new[] { filePath1, filePath2, filePath3 });
         _fileOpsMock.Setup(f => f.IsFileLocked(It.IsAny<string>())).Returns(false);
@@ -253,7 +264,30 @@ public class DirectoryScannerServiceTests
         await WaitForScanStatus(results, filePath3, ScanStatus.Skipped);
 
         // Assert
-        results.Should().Contain(r => r.Status == ScanStatus.Skipped && r.Message == "browser download file");
+        results.Should().Contain(r => r.Status == ScanStatus.Skipped && r.Message == "Excluded");
+        _vtServiceMock.Verify(v => v.ScanFileAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+    
+    [Fact]
+    public async Task ProcessFile_ShouldSkip_WhenFileMatchesExclusionPattern()
+    {
+        // Arrange
+        var filePath = "C:\\Scan\\custom.skip";
+        _settings.FileExclusions.Add("*.skip");
+        
+        _fileOpsMock.Setup(f => f.GetFiles(_settings.Paths.ScanDirectory)).Returns(new[] { filePath });
+        _fileOpsMock.Setup(f => f.IsFileLocked(filePath)).Returns(false);
+        _fileOpsMock.Setup(f => f.FileExists(filePath)).Returns(true);
+
+        var results = new ConcurrentBag<(ScanStatus Status, string FullPath, string Message)>();
+        _sut.ScanResultUpdated += (s, e) => results.Add((e.Status, e.FullPath, e.Message));
+
+        // Act
+        _sut.Start();
+        await WaitForScanStatus(results, filePath, ScanStatus.Skipped);
+
+        // Assert
+        results.Should().Contain(r => r.Status == ScanStatus.Skipped && r.Message == "Excluded");
         _vtServiceMock.Verify(v => v.ScanFileAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 }

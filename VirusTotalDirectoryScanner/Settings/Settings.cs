@@ -6,6 +6,33 @@ public sealed class Settings
 	public GeneralSettings General { get; set; } = new();
 
 	public PathsSettings Paths { get; set; } = new();
+
+	public List<string> FileExclusions { get; set; } = new()
+	{
+		// Chromium family (Edge, Chrome, Brave, Vivaldi)
+		"*.crdownload",
+		// Opera
+		"*.opdownload",
+		// Firefox
+		"*.part",
+		// Legacy Internet Explorer or EdgeHTML
+		"*.partial",
+		// Microsoft Office lock files
+		// Word
+		"~$*.doc", "~$*.docx", "~$*.dot", "~$*.dotx", "~$*.docm", "~$*.dotm",
+		// Excel
+		"~$*.xls", "~$*.xlsx", "~$*.xlsm", "~$*.xlt", "~$*.xltx", "~$*.xltm",
+		// PowerPoint
+		"~$*.ppt", "~$*.pptx", "~$*.pptm", "~$*.pot", "~$*.potx", "~$*.potm",
+		// Visio
+		"~$*.vsd", "~$*.vsdx",
+		// Publisher
+		"~$*.pub",
+		// Project
+		"~$*.mpp",
+		// Access lock files
+		"*.laccdb", "*.ldb"
+	};
 }
 
 public sealed class QuotaSettings

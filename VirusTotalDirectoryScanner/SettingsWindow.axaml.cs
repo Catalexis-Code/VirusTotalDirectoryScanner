@@ -90,4 +90,36 @@ public sealed partial class SettingsWindow : Window
 			e.Handled = true;
 		}
 	}
+
+	private void AddExclusion_Click(object? sender, RoutedEventArgs e)
+	{
+		if (DataContext is SettingsDialogViewModel vm)
+		{
+			vm.AddExclusion();
+            // Focus back on textbox
+            this.FindControl<TextBox>("ExclusionTextBox")?.Focus();
+		}
+	}
+
+	private void RemoveExclusion_Click(object? sender, RoutedEventArgs e)
+	{
+		if (DataContext is SettingsDialogViewModel vm && 
+			sender is Button button && 
+			button.Tag is string pattern)
+		{
+			vm.RemoveExclusion(pattern);
+		}
+	}
+
+    private void NewExclusionPattern_KeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter)
+        {
+            if (DataContext is SettingsDialogViewModel vm)
+            {
+                vm.AddExclusion();
+                this.FindControl<TextBox>("ExclusionTextBox")?.Focus();
+            }
+        }
+    }
 }

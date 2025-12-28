@@ -83,13 +83,14 @@
                             <Setter Property="HorizontalAlignment" Value="Stretch" />
                             <Setter Property="Padding" Value="0" />
                             <Setter Property="KeyboardNavigation.TabNavigation" Value="Local" />
+                            <Setter Property="AutomationProperties.Name" Value="{Binding StringFormat='{}{0}. Press DELETE key to remove.'}" />
                         </Style>
                     </ListBox.Styles>
                     <ListBox.ItemTemplate>
                         <DataTemplate>
                             <Border Padding="12,4">
                                 <Grid ColumnDefinitions="*, Auto">
-                                    <TextBlock Text="{Binding}" VerticalAlignment="Center" AutomationProperties.Name="{Binding, StringFormat='{}{0}. Press DELETE key to remove.'}" />
+                                    <TextBlock Text="{Binding}" VerticalAlignment="Center" />
                                     <Button Grid.Column="1" Content="Remove" Click="RemoveExclusion_Click" Tag="{Binding}" Background="Transparent" Foreground="Red" BorderThickness="0" Margin="4,0" Cursor="Hand" Focusable="True" AutomationProperties.Name="{Binding, StringFormat='remove {0}'}"/>
                                 </Grid>
                             </Border>

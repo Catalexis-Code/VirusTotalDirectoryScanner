@@ -15,6 +15,7 @@
     <TabStrip Grid.Row="1" SelectedIndex="{Binding SelectedTabIndex}" KeyboardNavigation.TabNavigation="Once">
       <TabStripItem Content="VirusTotal API" />
       <TabStripItem Content="Paths" />
+      <TabStripItem Content="Exclusions" />
       <TabStripItem Content="Settings Store" />
     </TabStrip>
 
@@ -90,8 +91,46 @@
           </StackPanel>
         </ScrollViewer>
 
-        <!-- Settings Store Tab -->
+        <!-- Exclusions Tab -->
         <ScrollViewer IsVisible="{Binding SelectedTabIndex, Converter={StaticResource SelectedIndexToVisibleConverter}, ConverterParameter=2}">
+          <StackPanel Margin="8" Spacing="8">
+            <TextBlock Text="File Exclusions" FontWeight="SemiBold" />
+            <TextBlock Text="Specify file patterns to ignore during the scan (e.g., *.tmp, *.log). Case-insensitive." TextWrapping="Wrap" FontSize="12" Foreground="Gray" />
+            
+            <Grid ColumnDefinitions="*,Auto" Margin="0,4">
+              <TextBox x:Name="ExclusionTextBox" 
+                       Text="{Binding NewExclusionPattern, Mode=TwoWay}" 
+                       Watermark="Enter pattern (e.g. *.txt)" 
+                       KeyDown="NewExclusionPattern_KeyDown"
+                       AutomationProperties.Name="Enter new file pattern to add"/>
+              <Button Grid.Column="1" Content="Add" Click="AddExclusion_Click" Margin="4,0,0,0"
+                      AutomationProperties.Name="{Binding NewExclusionPattern, StringFormat='Add {0}'}"/>
+            </Grid>
+
+            <ListBox x:Name="ExclusionsListBox" 
+                     ItemsSource="{Binding Exclusions}" 
+                     Height="180" 
+                     KeyDown="ExclusionsListBox_KeyDown"
+                     AutomationProperties.Name="Excluded file patterns list">
+              <ListBox.ItemTemplate>
+                <DataTemplate>
+                  <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Text="{Binding}" VerticalAlignment="Center" 
+                               AutomationProperties.Name="{Binding, StringFormat='{}{0}, Press delete to delete'}"/>
+                    <Button Grid.Column="1" Content="Remove" 
+                            Click="RemoveExclusion_Click" 
+                            Tag="{Binding}" 
+                            Padding="8,2"
+                            AutomationProperties.Name="{Binding, StringFormat='Remove {0}'}"/>
+                  </Grid>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+          </StackPanel>
+        </ScrollViewer>
+
+        <!-- Settings Store Tab -->
+        <ScrollViewer IsVisible="{Binding SelectedTabIndex, Converter={StaticResource SelectedIndexToVisibleConverter}, ConverterParameter=3}">
           <StackPanel Margin="8" Spacing="8">
             <TextBlock Text="User Secrets File" FontWeight="SemiBold" />
             <TextBlock Text="This file stores sensitive information like your API Key. It is stored in your user profile directory to keep it separate from the application code." TextWrapping="Wrap" FontSize="12" Foreground="Gray" />

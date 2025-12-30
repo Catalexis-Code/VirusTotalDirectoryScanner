@@ -127,6 +127,7 @@ public class DirectoryScannerService : IDisposable
                 LogMessage?.Invoke(this, $"Found {files.Length} existing files.");
                 foreach (var file in files)
                 {
+                    if (IsExcluded(Path.GetFileName(file))) continue;
                     EnqueueFile(file);
                 }
             }
@@ -142,8 +143,27 @@ public class DirectoryScannerService : IDisposable
         EnqueueFile(e.FullPath);
     }
 
+    private bool IsExcluded(string fileName)
+    {
+        var settings = _settingsService.CurrentSettings;
+        foreach (var pattern in settings.FileExclusions)
+        {
+            if (FileSystemName.MatchesSimpleExpression(pattern, fileName))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private void EnqueueFile(string fullPath)
     {
+        // Check exclusions immediately to prevent "Pending" state for excluded files
+        if (IsExcluded(Path.GetFileName(fullPath)))
+        {
+             return;
+        }
+
         // Add a small delay to allow browser rename operations to complete
         // This helps prevent "ghost" files (intermediate GUIDs) from being picked up immediately
         Task.Run(async () =>
@@ -339,6 +359,19 @@ public class DirectoryScannerService : IDisposable
         bool wasLocked = _lockedFiles.TryRemove(e.OldFullPath, out _);
         
         Log($"File renamed: {e.OldName} -> {e.Name} (WasLocked: {wasLocked})");
+
+        // If the new name is excluded, ensure the old entry is removed and do not track the new one
+        if (IsExcluded(e.Name))
+        {
+            ScanResultUpdated?.Invoke(this, new ScanResult 
+            { 
+                FileName = Path.GetFileName(e.OldFullPath), 
+                FullPath = e.OldFullPath, 
+                Status = ScanStatus.Removed,
+                Message = "Renamed to excluded file"
+            });
+            return;
+        }
 
         // Notify UI that the old file is now this new file
         // This will update the existing row if found

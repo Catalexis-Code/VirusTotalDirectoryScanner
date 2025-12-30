@@ -206,9 +206,8 @@ public class DirectoryScannerService : IDisposable
             FullPath = filePath, 
             Status = ScanStatus.Scanning 
         };
-        ScanResultUpdated?.Invoke(this, result);
         
-        // Check against configured exclusions
+        // Check against configured exclusions BEFORE emitting Scanning status
         var settings = _settingsService.CurrentSettings;
         foreach (var pattern in settings.FileExclusions)
         {
@@ -221,6 +220,9 @@ public class DirectoryScannerService : IDisposable
                 return;
             }
         }
+
+        // Not excluded, so now we are scanning
+        ScanResultUpdated?.Invoke(this, result);
 
         try
         {

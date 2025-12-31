@@ -11,7 +11,12 @@ namespace VirusTotalDirectoryScanner;
 
 public sealed partial class MainWindow : Window
 {
-    private readonly ISettingsService _settingsService;
+    private readonly ISettingsService? _settingsService;
+
+    // Parameterless constructor required by Avalonia runtime loader (AVLN3001)
+    public MainWindow() : this(null!)
+    {
+    }
 
     public MainWindow(ISettingsService settingsService)
     {
@@ -49,39 +54,39 @@ public sealed partial class MainWindow : Window
 
     private async void Vm_RequestDirectorySelect(object? sender, EventArgs e)
     {
-        if (DataContext is MainWindowViewModel vm)
+        if (_settingsService == null || DataContext is not MainWindowViewModel vm)
+            return;
+
+        var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
         {
-            var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+            Title = "Select Folder to Monitor",
+            AllowMultiple = false
+        });
+
+        if (folders.Count > 0)
+        {
+            var path = folders[0].Path.LocalPath;
+            
+            var settings = _settingsService.CurrentSettings;
+            settings.Paths.ScanDirectory = path;
+
+            // Auto-populate other paths if they are blank
+            if (string.IsNullOrWhiteSpace(settings.Paths.CleanDirectory))
             {
-                Title = "Select Folder to Monitor",
-                AllowMultiple = false
-            });
-
-            if (folders.Count > 0)
-            {
-                var path = folders[0].Path.LocalPath;
-                
-                var settings = _settingsService.CurrentSettings;
-                settings.Paths.ScanDirectory = path;
-
-                // Auto-populate other paths if they are blank
-                if (string.IsNullOrWhiteSpace(settings.Paths.CleanDirectory))
-                {
-                    settings.Paths.CleanDirectory = Path.Combine(path, "Clean");
-                }
-                if (string.IsNullOrWhiteSpace(settings.Paths.CompromisedDirectory))
-                {
-                    settings.Paths.CompromisedDirectory = Path.Combine(path, "Compromised");
-                }
-                if (string.IsNullOrWhiteSpace(settings.Paths.LogFilePath))
-                {
-                    settings.Paths.LogFilePath = Path.Combine(path, "virus-total-scanner-log.txt");
-                }
-
-                await _settingsService.SaveAsync(settings);
-                
-                vm.OnSettingsSaved();
+                settings.Paths.CleanDirectory = Path.Combine(path, "Clean");
             }
+            if (string.IsNullOrWhiteSpace(settings.Paths.CompromisedDirectory))
+            {
+                settings.Paths.CompromisedDirectory = Path.Combine(path, "Compromised");
+            }
+            if (string.IsNullOrWhiteSpace(settings.Paths.LogFilePath))
+            {
+                settings.Paths.LogFilePath = Path.Combine(path, "virus-total-scanner-log.txt");
+            }
+
+            await _settingsService.SaveAsync(settings);
+            
+            vm.OnSettingsSaved();
         }
     }
 

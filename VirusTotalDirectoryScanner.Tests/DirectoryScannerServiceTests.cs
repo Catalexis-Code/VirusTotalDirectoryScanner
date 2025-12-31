@@ -69,7 +69,7 @@ public class DirectoryScannerServiceTests
     {
         // Arrange
         var filePath = "C:\\Scan\\test.exe";
-        _fileOpsMock.Setup(f => f.GetFiles(_settings.Paths.ScanDirectory)).Returns(new[] { filePath });
+        _fileOpsMock.Setup(f => f.GetFiles(_settings.Paths.ScanDirectory!)).Returns(new[] { filePath });
         _fileOpsMock.Setup(f => f.IsFileLocked(filePath)).Returns(false);
         
         _fileOpsMock.Setup(f => f.FileExists(filePath)).Returns(true);
@@ -101,13 +101,13 @@ public class DirectoryScannerServiceTests
     public async Task Start_ShouldCreateDirectory_IfItDoesNotExist()
     {
         // Arrange
-        _fileOpsMock.Setup(f => f.DirectoryExists(_settings.Paths.ScanDirectory)).Returns(false);
+        _fileOpsMock.Setup(f => f.DirectoryExists(_settings.Paths.ScanDirectory!)).Returns(false);
 
         // Act
         _sut.Start();
 
         // Assert
-        _fileOpsMock.Verify(f => f.CreateDirectory(_settings.Paths.ScanDirectory), Times.Once);
+        _fileOpsMock.Verify(f => f.CreateDirectory(_settings.Paths.ScanDirectory!), Times.Once);
     }
 
     [Fact]
@@ -115,7 +115,7 @@ public class DirectoryScannerServiceTests
     {
         // Arrange
         var filePath = "C:\\Scan\\virus.exe";
-        _fileOpsMock.Setup(f => f.GetFiles(_settings.Paths.ScanDirectory)).Returns(new[] { filePath });
+        _fileOpsMock.Setup(f => f.GetFiles(_settings.Paths.ScanDirectory!)).Returns(new[] { filePath });
         _fileOpsMock.Setup(f => f.IsFileLocked(filePath)).Returns(false);
 
         _fileOpsMock.Setup(f => f.FileExists(filePath)).Returns(true);
@@ -142,13 +142,13 @@ public class DirectoryScannerServiceTests
     {
         // Arrange
         var fileName = "test.exe";
-        var sourcePath = Path.Combine(_settings.Paths.ScanDirectory, fileName);
-        var destPath = Path.Combine(_settings.Paths.CleanDirectory, fileName);
+        var sourcePath = Path.Combine(_settings.Paths.ScanDirectory!, fileName);
+        var destPath = Path.Combine(_settings.Paths.CleanDirectory!, fileName);
         
-        _fileOpsMock.Setup(f => f.GetFiles(_settings.Paths.ScanDirectory)).Returns(new[] { sourcePath });
+        _fileOpsMock.Setup(f => f.GetFiles(_settings.Paths.ScanDirectory!)).Returns(new[] { sourcePath });
         _fileOpsMock.Setup(f => f.IsFileLocked(sourcePath)).Returns(false);
         _fileOpsMock.Setup(f => f.FileExists(sourcePath)).Returns(true);
-        _fileOpsMock.Setup(f => f.DirectoryExists(_settings.Paths.CleanDirectory)).Returns(true);
+        _fileOpsMock.Setup(f => f.DirectoryExists(_settings.Paths.CleanDirectory!)).Returns(true);
         
         // Destination file exists
         _fileOpsMock.Setup(f => f.FileExists(destPath)).Returns(true);
@@ -179,13 +179,13 @@ public class DirectoryScannerServiceTests
     {
         // Arrange
         var fileName = "test.exe";
-        var sourcePath = Path.Combine(_settings.Paths.ScanDirectory, fileName);
-        var destPath = Path.Combine(_settings.Paths.CleanDirectory, fileName);
+        var sourcePath = Path.Combine(_settings.Paths.ScanDirectory!, fileName);
+        var destPath = Path.Combine(_settings.Paths.CleanDirectory!, fileName);
         
-        _fileOpsMock.Setup(f => f.GetFiles(_settings.Paths.ScanDirectory)).Returns(new[] { sourcePath });
+        _fileOpsMock.Setup(f => f.GetFiles(_settings.Paths.ScanDirectory!)).Returns(new[] { sourcePath });
         _fileOpsMock.Setup(f => f.IsFileLocked(sourcePath)).Returns(false);
         _fileOpsMock.Setup(f => f.FileExists(sourcePath)).Returns(true);
-        _fileOpsMock.Setup(f => f.DirectoryExists(_settings.Paths.CleanDirectory)).Returns(true);
+        _fileOpsMock.Setup(f => f.DirectoryExists(_settings.Paths.CleanDirectory!)).Returns(true);
         
         // Destination file exists
         _fileOpsMock.Setup(f => f.FileExists(destPath)).Returns(true);
@@ -208,14 +208,14 @@ public class DirectoryScannerServiceTests
         // Should NOT delete existing file
         _fileOpsMock.Verify(f => f.DeleteFile(destPath), Times.Never);
         // Should move to new name (timestamped)
-        _fileOpsMock.Verify(f => f.MoveFile(sourcePath, It.Is<string>(p => p != destPath && p.StartsWith(Path.Combine(_settings.Paths.CleanDirectory, "test_")))), Times.Once);
+        _fileOpsMock.Verify(f => f.MoveFile(sourcePath, It.Is<string>(p => p != destPath && p.StartsWith(Path.Combine(_settings.Paths.CleanDirectory!, "test_")))), Times.Once);
     }
     [Fact]
     public async Task ProcessFile_ShouldSkip_WhenFileIsOfficeTemp()
     {
         // Arrange
         var filePath = "C:\\Scan\\~$doc.docx";
-        _fileOpsMock.Setup(f => f.GetFiles(_settings.Paths.ScanDirectory)).Returns(new[] { filePath });
+        _fileOpsMock.Setup(f => f.GetFiles(_settings.Paths.ScanDirectory!)).Returns(new[] { filePath });
         _fileOpsMock.Setup(f => f.IsFileLocked(filePath)).Returns(false);
         _fileOpsMock.Setup(f => f.FileExists(filePath)).Returns(true);
 
@@ -250,7 +250,7 @@ public class DirectoryScannerServiceTests
         
         var filePath3 = "C:\\Scan\\file.partial"; // Changed from .download to .partial
         
-        _fileOpsMock.Setup(f => f.GetFiles(_settings.Paths.ScanDirectory)).Returns(new[] { filePath1, filePath2, filePath3 });
+        _fileOpsMock.Setup(f => f.GetFiles(_settings.Paths.ScanDirectory!)).Returns(new[] { filePath1, filePath2, filePath3 });
         _fileOpsMock.Setup(f => f.IsFileLocked(It.IsAny<string>())).Returns(false);
         _fileOpsMock.Setup(f => f.FileExists(It.IsAny<string>())).Returns(true);
 
@@ -275,7 +275,7 @@ public class DirectoryScannerServiceTests
         var filePath = "C:\\Scan\\custom.skip";
         _settings.FileExclusions.Add("*.skip");
         
-        _fileOpsMock.Setup(f => f.GetFiles(_settings.Paths.ScanDirectory)).Returns(new[] { filePath });
+        _fileOpsMock.Setup(f => f.GetFiles(_settings.Paths.ScanDirectory!)).Returns(new[] { filePath });
         _fileOpsMock.Setup(f => f.IsFileLocked(filePath)).Returns(false);
         _fileOpsMock.Setup(f => f.FileExists(filePath)).Returns(true);
 

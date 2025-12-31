@@ -175,10 +175,10 @@ public sealed partial class SettingsWindow : Window
             AllowMultiple = false
         };
         var result = await storage.OpenFolderPickerAsync(options);
-        if (result?.Count == 0)
+        var folder = result?.FirstOrDefault();
+        if (folder == null)
             return;
 
-        var folder = result[0];
         string? path = folder.Path?.AbsolutePath ?? folder.TryGetLocalPath();
         if (string.IsNullOrEmpty(path))
             return;
@@ -220,10 +220,10 @@ public sealed partial class SettingsWindow : Window
             }
         };
         var result = await storage.OpenFilePickerAsync(options);
-        if (result?.Count == 0)
+        var file = result?.FirstOrDefault();
+        if (file == null)
             return;
 
-        var file = result[0];
         string? path = file.Path?.AbsolutePath ?? file.TryGetLocalPath();
         if (string.IsNullOrEmpty(path))
             return;

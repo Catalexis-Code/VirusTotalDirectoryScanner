@@ -72,12 +72,12 @@ public class ExclusionRegressionTests
         // We want to test that adding "*.crdownload" as an exclusion prevents this.
         
         var fileName = "Unconfirmed 885525.crdownload";
-        var filePath = Path.Combine(_settings.Paths.ScanDirectory, fileName);
+        var filePath = Path.Combine(_settings.Paths.ScanDirectory!, fileName);
         
         // Add the exclusion as the user would have it
         _settings.FileExclusions.Add("*.crdownload");
         
-        _fileOpsMock.Setup(f => f.GetFiles(_settings.Paths.ScanDirectory)).Returns(new[] { filePath });
+        _fileOpsMock.Setup(f => f.GetFiles(_settings.Paths.ScanDirectory!)).Returns(new[] { filePath });
         _fileOpsMock.Setup(f => f.IsFileLocked(filePath)).Returns(false);
         _fileOpsMock.Setup(f => f.FileExists(filePath)).Returns(true);
         

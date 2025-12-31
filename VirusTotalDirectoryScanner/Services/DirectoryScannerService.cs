@@ -96,7 +96,7 @@ public class DirectoryScannerService : IDisposable
             }
 
             var settings = _settingsService.CurrentSettings;
-            _watcher = _watcherFactory.Create(settings.Paths.ScanDirectory);
+            _watcher = _watcherFactory.Create(settings.Paths.ScanDirectory!);
             _watcher.Created += OnFileCreated;
             _watcher.Renamed += OnRenamed;
             _watcher.Changed += OnChanged;
@@ -123,7 +123,7 @@ public class DirectoryScannerService : IDisposable
             try
             {
                 var settings = _settingsService.CurrentSettings;
-                var files = _fileOperationsService.GetFiles(settings.Paths.ScanDirectory);
+                var files = _fileOperationsService.GetFiles(settings.Paths.ScanDirectory!);
                 LogMessage?.Invoke(this, $"Found {files.Length} existing files.");
                 foreach (var file in files)
                 {
@@ -361,7 +361,7 @@ public class DirectoryScannerService : IDisposable
         Log($"File renamed: {e.OldName} -> {e.Name} (WasLocked: {wasLocked})");
 
         // If the new name is excluded, ensure the old entry is removed and do not track the new one
-        if (IsExcluded(e.Name))
+        if (e.Name != null && IsExcluded(e.Name))
         {
             ScanResultUpdated?.Invoke(this, new ScanResult 
             { 
@@ -372,6 +372,10 @@ public class DirectoryScannerService : IDisposable
             });
             return;
         }
+
+        // If the new name is null, we can't proceed
+        if (e.Name == null)
+            return;
 
         // Notify UI that the old file is now this new file
         // This will update the existing row if found

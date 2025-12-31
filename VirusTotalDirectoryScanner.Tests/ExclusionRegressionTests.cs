@@ -19,7 +19,7 @@ public class ExclusionRegressionTests
     private readonly DirectoryScannerService _sut;
     private readonly Settings.Settings _settings;
 
-    public ReproductionTests()
+    public ExclusionRegressionTests()
     {
         _vtServiceMock = new Mock<IVirusTotalService>();
         _settingsServiceMock = new Mock<ISettingsService>();

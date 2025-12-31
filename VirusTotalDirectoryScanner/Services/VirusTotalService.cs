@@ -87,7 +87,11 @@ public class VirusTotalService : IVirusTotalService
             // For simplicity, we keep standard retries if implementing a policy, but here we just do basic call.
             var response = await uploadClient.PostAsync(urlResponse.Data, content, ct);
             if (!response.IsSuccessStatusCode)
-                return (ScanResultStatus.Failed, 0, hash, $"Upload failed: {response.StatusCode}");
+            {
+                var errorBody = await response.Content.ReadAsStringAsync(ct);
+                var errorMessage = ExtractApiError(errorBody);
+                return (ScanResultStatus.Failed, 0, hash, $"Upload failed: {response.StatusCode}{(string.IsNullOrEmpty(errorMessage) ? "" : $" - {errorMessage}")}");
+            }
 
             var json = await response.Content.ReadAsStringAsync(ct);
             try 
@@ -102,9 +106,17 @@ public class VirusTotalService : IVirusTotalService
         else
         {
             // Standard flow
-            await using var stream = _fileOperationsService.OpenRead(filePath);
-            var streamPart = new StreamPart(stream, Path.GetFileName(filePath));
-            uploadResult = await ExecuteWithRetryAsync(() => _api.UploadFile(streamPart), ct);
+            try
+            {
+                await using var stream = _fileOperationsService.OpenRead(filePath);
+                var streamPart = new StreamPart(stream, Path.GetFileName(filePath));
+                uploadResult = await ExecuteWithRetryAsync(() => _api.UploadFile(streamPart), ct);
+            }
+            catch (ApiException ex)
+            {
+                var errorMessage = ExtractApiError(ex.Content);
+                return (ScanResultStatus.Failed, 0, hash, $"Upload failed: {ex.StatusCode}{(string.IsNullOrEmpty(errorMessage) ? "" : $" - {errorMessage}")}");
+            }
         }
 
         if (uploadResult.Data?.Id == null)
@@ -179,6 +191,41 @@ public class VirusTotalService : IVirusTotalService
         if (stats == null) return (ScanResultStatus.Unknown, 0);
         if (stats.Malicious > 0) return (ScanResultStatus.Compromised, stats.Malicious);
         return (ScanResultStatus.Clean, 0);
+    }
+
+    private static string? ExtractApiError(string? responseBody)
+    {
+        if (string.IsNullOrWhiteSpace(responseBody))
+            return null;
+
+        try
+        {
+            using var doc = JsonDocument.Parse(responseBody);
+            var root = doc.RootElement;
+            
+            // VirusTotal API error format: { "error": { "message": "...", "code": "..." } }
+            if (root.TryGetProperty("error", out var errorElement))
+            {
+                if (errorElement.TryGetProperty("message", out var messageElement))
+                {
+                    return messageElement.GetString();
+                }
+                // Fallback to code if message not available
+                if (errorElement.TryGetProperty("code", out var codeElement))
+                {
+                    return codeElement.GetString();
+                }
+            }
+        }
+        catch (JsonException)
+        {
+            // If not JSON, return the raw body (truncated if too long)
+            if (responseBody.Length > 150)
+                return responseBody[..150] + "...";
+            return responseBody;
+        }
+
+        return null;
     }
 }
 

@@ -1,4 +1,6 @@
 using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using VirusTotalDirectoryScanner.Settings;
 using VirusTotalDirectoryScanner.ViewModels;
@@ -15,6 +17,14 @@ public sealed partial class MainWindow : Window
     {
         _settingsService = settingsService;
         InitializeComponent();
+        
+        // Wire up keyboard shortcut for copy (Ctrl+C) using tunneling to intercept before DataGrid handles it
+        var dataGrid = this.FindControl<DataGrid>("ScanResultsGrid");
+        if (dataGrid != null)
+        {
+            dataGrid.AddHandler(KeyDownEvent, DataGrid_KeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
+        }
+        
         Opened += (s, e) => 
         {
             if (DataContext is MainWindowViewModel vm)
@@ -106,6 +116,61 @@ public sealed partial class MainWindow : Window
         catch
         {
             // Ignore errors for now
+        }
+    }
+
+    private async void CopyMenuItem_Click(object? sender, RoutedEventArgs e)
+    {
+        var dataGrid = this.FindControl<DataGrid>("ScanResultsGrid");
+        if (dataGrid?.CurrentColumn != null && dataGrid.SelectedItem != null)
+        {
+            var cellContent = GetCellContent(dataGrid.SelectedItem, dataGrid.CurrentColumn);
+            if (!string.IsNullOrEmpty(cellContent))
+            {
+                var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
+                if (clipboard != null)
+                {
+                    await clipboard.SetTextAsync(cellContent);
+                }
+            }
+        }
+    }
+
+    private static string? GetCellContent(object item, DataGridColumn column)
+    {
+        if (item is Models.ScanResult scanResult)
+        {
+            // Determine which column based on the header
+            if (column.Header?.ToString() == "File Name")
+            {
+                return scanResult.FileName;
+            }
+            else if (column.Header?.ToString() == "Status")
+            {
+                return scanResult.StatusDisplay;
+            }
+        }
+        return null;
+    }
+
+    private async void DataGrid_KeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.C && e.KeyModifiers.HasFlag(KeyModifiers.Control))
+        {
+            var dataGrid = sender as DataGrid;
+            if (dataGrid?.CurrentColumn != null && dataGrid.SelectedItem != null)
+            {
+                var cellContent = GetCellContent(dataGrid.SelectedItem, dataGrid.CurrentColumn);
+                if (!string.IsNullOrEmpty(cellContent))
+                {
+                    var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
+                    if (clipboard != null)
+                    {
+                        await clipboard.SetTextAsync(cellContent);
+                        e.Handled = true;
+                    }
+                }
+            }
         }
     }
 }

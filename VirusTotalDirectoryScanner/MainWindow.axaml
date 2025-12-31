@@ -37,7 +37,12 @@
         <Button Grid.Column="1" Content="Clear" Command="{Binding ClearCommand}" VerticalAlignment="Bottom" AutomationProperties.Name="Clear" />
       </Grid>
 
-      <DataGrid Grid.Row="1" ItemsSource="{Binding ScanResults}" AutoGenerateColumns="False" IsReadOnly="True" AutomationProperties.Name="Scan Results">
+      <DataGrid Grid.Row="1" x:Name="ScanResultsGrid" ItemsSource="{Binding ScanResults}" AutoGenerateColumns="False" IsReadOnly="True" AutomationProperties.Name="Scan Results">
+        <DataGrid.ContextMenu>
+          <ContextMenu>
+            <MenuItem Header="Copy" Click="CopyMenuItem_Click" InputGesture="Ctrl+C" />
+          </ContextMenu>
+        </DataGrid.ContextMenu>
         <DataGrid.Styles>
           <Style Selector="DataGridRow">
             <Setter Property="AutomationProperties.Name">

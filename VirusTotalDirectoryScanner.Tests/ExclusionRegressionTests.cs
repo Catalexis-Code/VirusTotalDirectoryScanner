@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Concurrent;
 using FluentAssertions;
 using Moq;
@@ -82,7 +83,7 @@ public class ExclusionRegressionTests
         _fileOpsMock.Setup(f => f.FileExists(filePath)).Returns(true);
         
         // If it scans, it calls this:
-        _vtServiceMock.Setup(v => v.ScanFileAsync(filePath, It.IsAny<CancellationToken>()))
+        _vtServiceMock.Setup(v => v.ScanFileAsync(filePath, It.IsAny<Action<ScanPhase>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((ScanResultStatus.Clean, 0, "hash", "Clean"));
 
         var results = new ConcurrentBag<(ScanStatus Status, string FullPath, string Message)>();
@@ -91,14 +92,13 @@ public class ExclusionRegressionTests
         // Act
         _sut.Start();
         
-        // Wait enough time for processing
-        await Task.Delay(300);
+        // Wait for some time to ensure it didn't start scanning
+        await Task.Delay(500);
 
         // Assert
-        // We expect it to be SKIPPED, not SCANNED or CLEAN
-        results.Should().NotContain(r => r.Status == ScanStatus.Scanning, "should not start scanning excluded file");
-        results.Should().Contain(r => r.Status == ScanStatus.Skipped && r.Message == "Excluded", "should skip excluded file");
+        // We expect it to be ignored completely (no events), matching "Exclude Files From Main Grid" behavior
+        results.Any(r => r.FullPath == filePath).Should().BeFalse("should silently skip excluded file");
         
-        _vtServiceMock.Verify(v => v.ScanFileAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        _vtServiceMock.Verify(v => v.ScanFileAsync(It.IsAny<string>(), It.IsAny<Action<ScanPhase>>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 }

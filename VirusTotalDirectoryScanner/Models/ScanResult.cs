@@ -8,7 +8,9 @@ public enum ScanStatus
 {
     Pending,
     PendingLocked,
+    CalculatingChecksum,
     Scanning,
+    Uploading,
     Clean,
     Compromised,
     Failed,
@@ -52,6 +54,8 @@ public class ScanResult : INotifyPropertyChanged
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(StatusDisplay));
                 OnPropertyChanged(nameof(IsScanning));
+                OnPropertyChanged(nameof(IsCalculatingChecksum));
+                OnPropertyChanged(nameof(IsUploading));
                 OnPropertyChanged(nameof(IsCompromised));
                 OnPropertyChanged(nameof(IsClean));
                 OnPropertyChanged(nameof(IsFailed));
@@ -96,19 +100,23 @@ public class ScanResult : INotifyPropertyChanged
         : string.Empty;
 
     public bool IsScanning => Status == ScanStatus.Scanning;
+    public bool IsCalculatingChecksum => Status == ScanStatus.CalculatingChecksum;
+    public bool IsUploading => Status == ScanStatus.Uploading;
     public bool IsCompromised => Status == ScanStatus.Compromised;
     public bool IsClean => Status == ScanStatus.Clean;
     public bool IsFailed => Status == ScanStatus.Failed;
     public bool IsPending => Status == ScanStatus.Pending;
     public bool IsPendingLocked => Status == ScanStatus.PendingLocked;
     public bool IsSkipped => Status == ScanStatus.Skipped;
-    public bool IsOther => !IsScanning && !IsClean && !IsCompromised && !IsFailed && !IsPending && !IsPendingLocked && !IsSkipped;
+    public bool IsOther => !IsScanning && !IsClean && !IsCompromised && !IsFailed && !IsPending && !IsPendingLocked && !IsSkipped && !IsCalculatingChecksum && !IsUploading;
 
     public string StatusDisplay => Status switch
     {
         ScanStatus.Pending => "Pending",
         ScanStatus.PendingLocked => "Pending (Locked)",
+        ScanStatus.CalculatingChecksum => "Calculating checksum...",
         ScanStatus.Scanning => !string.IsNullOrEmpty(Message) ? Message : "Scanning...",
+        ScanStatus.Uploading => "Uploading...",
         ScanStatus.Clean => "Clean",
         ScanStatus.Compromised => $"Compromised ({DetectionCount})",
         ScanStatus.Failed => $"Failed: {Message}",

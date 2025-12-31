@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Concurrent;
 using FluentAssertions;
 using Moq;
@@ -74,7 +75,7 @@ public class DirectoryScannerServiceTests
         
         _fileOpsMock.Setup(f => f.FileExists(filePath)).Returns(true);
         
-        _vtServiceMock.Setup(v => v.ScanFileAsync(filePath, It.IsAny<CancellationToken>()))
+        _vtServiceMock.Setup(v => v.ScanFileAsync(filePath, It.IsAny<Action<ScanPhase>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((ScanResultStatus.Clean, 0, "hash", "Clean"));
 
         var results = new ConcurrentBag<(ScanStatus Status, string FullPath, string Message)>();
@@ -94,7 +95,7 @@ public class DirectoryScannerServiceTests
         results.Should().Contain(r => r.Status == ScanStatus.Scanning && r.FullPath == filePath);
         results.Should().Contain(r => r.Status == ScanStatus.Clean && r.FullPath == filePath);
         
-        _vtServiceMock.Verify(v => v.ScanFileAsync(filePath, It.IsAny<CancellationToken>()), Times.Once);
+        _vtServiceMock.Verify(v => v.ScanFileAsync(filePath, It.IsAny<Action<ScanPhase>>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -120,7 +121,7 @@ public class DirectoryScannerServiceTests
 
         _fileOpsMock.Setup(f => f.FileExists(filePath)).Returns(true);
 
-        _vtServiceMock.Setup(v => v.ScanFileAsync(filePath, It.IsAny<CancellationToken>()))
+        _vtServiceMock.Setup(v => v.ScanFileAsync(filePath, It.IsAny<Action<ScanPhase>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((ScanResultStatus.Compromised, 5, "hash", "Infected"));
 
         var results = new ConcurrentBag<(ScanStatus Status, string FullPath, string Message)>();
@@ -157,7 +158,7 @@ public class DirectoryScannerServiceTests
         _fileOpsMock.Setup(f => f.CalculateSha256Async(sourcePath, It.IsAny<CancellationToken>())).ReturnsAsync("hash1");
         _fileOpsMock.Setup(f => f.CalculateSha256Async(destPath, It.IsAny<CancellationToken>())).ReturnsAsync("hash1");
 
-        _vtServiceMock.Setup(v => v.ScanFileAsync(sourcePath, It.IsAny<CancellationToken>()))
+        _vtServiceMock.Setup(v => v.ScanFileAsync(sourcePath, It.IsAny<Action<ScanPhase>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((ScanResultStatus.Clean, 0, "hash1", "Clean"));
 
         var results = new ConcurrentBag<(ScanStatus Status, string FullPath, string Message)>();
@@ -194,7 +195,7 @@ public class DirectoryScannerServiceTests
         _fileOpsMock.Setup(f => f.CalculateSha256Async(sourcePath, It.IsAny<CancellationToken>())).ReturnsAsync("hash1");
         _fileOpsMock.Setup(f => f.CalculateSha256Async(destPath, It.IsAny<CancellationToken>())).ReturnsAsync("hash2");
 
-        _vtServiceMock.Setup(v => v.ScanFileAsync(sourcePath, It.IsAny<CancellationToken>()))
+        _vtServiceMock.Setup(v => v.ScanFileAsync(sourcePath, It.IsAny<Action<ScanPhase>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((ScanResultStatus.Clean, 0, "hash1", "Clean"));
 
         var results = new ConcurrentBag<(ScanStatus Status, string FullPath, string Message)>();
@@ -224,11 +225,11 @@ public class DirectoryScannerServiceTests
 
         // Act
         _sut.Start();
-        await WaitForScanStatus(results, filePath, ScanStatus.Skipped);
+        await Task.Delay(200);
 
         // Assert
-        results.Should().Contain(r => r.Status == ScanStatus.Skipped && r.Message == "Excluded");
-        _vtServiceMock.Verify(v => v.ScanFileAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        results.Should().BeEmpty(); // Expect no events
+        _vtServiceMock.Verify(v => v.ScanFileAsync(It.IsAny<string>(), It.IsAny<Action<ScanPhase>>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -258,14 +259,15 @@ public class DirectoryScannerServiceTests
         _sut.ScanResultUpdated += (s, e) => results.Add((e.Status, e.FullPath, e.Message));
 
         // Act
+        // Act
         _sut.Start();
-        await WaitForScanStatus(results, filePath1, ScanStatus.Skipped);
-        await WaitForScanStatus(results, filePath2, ScanStatus.Skipped);
-        await WaitForScanStatus(results, filePath3, ScanStatus.Skipped);
+        await Task.Delay(200);
 
         // Assert
-        results.Should().Contain(r => r.Status == ScanStatus.Skipped && r.Message == "Excluded");
-        _vtServiceMock.Verify(v => v.ScanFileAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        results.Should().NotContain(r => r.FullPath == filePath1);
+        results.Should().NotContain(r => r.FullPath == filePath2);
+        results.Should().NotContain(r => r.FullPath == filePath3);
+        _vtServiceMock.Verify(v => v.ScanFileAsync(It.IsAny<string>(), It.IsAny<Action<ScanPhase>>(), It.IsAny<CancellationToken>()), Times.Never);
     }
     
     [Fact]
@@ -288,6 +290,36 @@ public class DirectoryScannerServiceTests
 
         // Assert
         results.Should().Contain(r => r.Status == ScanStatus.Skipped && r.Message == "Excluded");
-        _vtServiceMock.Verify(v => v.ScanFileAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        _vtServiceMock.Verify(v => v.ScanFileAsync(It.IsAny<string>(), It.IsAny<Action<ScanPhase>>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ProcessFile_ShouldEmitCalculatingChecksumAndUploadingStatuses()
+    {
+        // Arrange
+        var filePath = "C:\\Scan\\test.exe";
+        _fileOpsMock.Setup(f => f.GetFiles(_settings.Paths.ScanDirectory!)).Returns(new[] { filePath });
+        _fileOpsMock.Setup(f => f.IsFileLocked(filePath)).Returns(false);
+        _fileOpsMock.Setup(f => f.FileExists(filePath)).Returns(true);
+
+        // Setup mock to invoke the callback sequences
+        _vtServiceMock.Setup(v => v.ScanFileAsync(filePath, It.IsAny<Action<ScanPhase>>(), It.IsAny<CancellationToken>()))
+            .Callback<string, Action<ScanPhase>, CancellationToken>((path, callback, token) =>
+            {
+                callback?.Invoke(ScanPhase.CalculatingChecksum);
+                callback?.Invoke(ScanPhase.Uploading);
+            })
+            .ReturnsAsync((ScanResultStatus.Clean, 0, "hash", "Clean"));
+
+        var results = new ConcurrentBag<(ScanStatus Status, string FullPath, string Message)>();
+        _sut.ScanResultUpdated += (s, e) => results.Add((e.Status, e.FullPath, e.Message));
+
+        // Act
+        _sut.Start();
+        await WaitForScanStatus(results, filePath, ScanStatus.Clean);
+
+        // Assert
+        results.Should().Contain(r => r.Status == ScanStatus.CalculatingChecksum && r.FullPath == filePath);
+        results.Should().Contain(r => r.Status == ScanStatus.Uploading && r.FullPath == filePath);
     }
 }

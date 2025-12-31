@@ -304,7 +304,30 @@ public class DirectoryScannerService : IDisposable
             (ScanResultStatus Status, int DetectionCount, string Hash, string? Message) scanResult;
             try
             {
-                scanResult = await _vtService.ScanFileAsync(filePath, _cts.Token);
+                scanResult = await _vtService.ScanFileAsync(filePath, phase => 
+                {
+                    // Update status based on phase
+                    switch (phase)
+                    {
+                        case ScanPhase.CalculatingChecksum:
+                            result.Status = ScanStatus.CalculatingChecksum;
+                             result.Message = "";
+                            break;
+                        case ScanPhase.CheckingCache:
+                            result.Status = ScanStatus.Scanning;
+                            result.Message = "Checking cache...";
+                            break;
+                        case ScanPhase.Uploading:
+                            result.Status = ScanStatus.Uploading;
+                             result.Message = "";
+                            break;
+                        case ScanPhase.WaitingForAnalysis:
+                            result.Status = ScanStatus.Scanning;
+                            result.Message = "Waiting for analysis...";
+                            break;
+                    }
+                    ScanResultUpdated?.Invoke(this, result);
+                }, _cts.Token);
             }
             finally
             {

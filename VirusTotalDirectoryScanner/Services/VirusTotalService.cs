@@ -30,7 +30,10 @@ public class VirusTotalService : IVirusTotalService
         _fileOperationsService = fileOperationsService;
     }
 
-    public async Task<(ScanResultStatus Status, int DetectionCount, string Hash, string? Message)> ScanFileAsync(string filePath, CancellationToken ct = default)
+    public async Task<(ScanResultStatus Status, int DetectionCount, string Hash, string? Message)> ScanFileAsync(
+        string filePath, 
+        Action<ScanPhase>? onPhaseChanged = null,
+        CancellationToken ct = default)
     {
         var settings = _settingsService.CurrentSettings;
 
@@ -38,9 +41,11 @@ public class VirusTotalService : IVirusTotalService
         _quotaService.CheckQuota();
 
         // 2. Calculate Hash
+        onPhaseChanged?.Invoke(ScanPhase.CalculatingChecksum);
         string hash = await _fileOperationsService.CalculateSha256Async(filePath, ct);
 
         // 3. Check if file exists (GetFileReport)
+        onPhaseChanged?.Invoke(ScanPhase.CheckingCache);
         try 
         {
             await _quotaService.IncrementQuotaAsync(ct);
@@ -57,6 +62,7 @@ public class VirusTotalService : IVirusTotalService
         }
 
         // 4. Upload File
+        onPhaseChanged?.Invoke(ScanPhase.Uploading);
         await _quotaService.IncrementQuotaAsync(ct);
         
         long fileSize = _fileOperationsService.GetFileLength(filePath);
@@ -142,6 +148,7 @@ public class VirusTotalService : IVirusTotalService
         int timeoutMinutes = settings.General.PollingTimeoutMinutes > 0 ? settings.General.PollingTimeoutMinutes : 15;
 
         // 5. Poll for results
+        onPhaseChanged?.Invoke(ScanPhase.WaitingForAnalysis);
         while (true)
         {
             if (DateTime.Now - startTime > TimeSpan.FromMinutes(timeoutMinutes))

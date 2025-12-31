@@ -1,6 +1,7 @@
-using System.Threading.RateLimiting;
-using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Text;
 using System.Text.Json;
+using System.Threading.RateLimiting;
 using Refit;
 using VirusTotalDirectoryScanner.Models;
 using VirusTotalDirectoryScanner.Settings;
@@ -81,7 +82,19 @@ public class VirusTotalService : IVirusTotalService
             
             using var content = new MultipartFormDataContent();
             await using var fileStream = _fileOperationsService.OpenRead(filePath);
-            content.Add(new StreamContent(fileStream), "file", Path.GetFileName(filePath));
+            var streamContent = new StreamContent(fileStream);
+            
+            // Manually set Content-Disposition to avoid .NET adding filename* encoding (RFC 5987)
+            // which VirusTotal does not support and causes "Malformed multipart body" errors
+            var fileName = Path.GetFileName(filePath);
+            var safeFileName = SanitizeFileName(fileName);
+            streamContent.Headers.ContentDisposition = new ContentDispositionHeaderValue("form-data")
+            {
+                Name = "\"file\"",
+                FileName = $"\"{safeFileName}\""
+            };
+            streamContent.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+            content.Add(streamContent);
             
             // Upload itself typically doesn't need 429 retry in the same way, but could benefit from robust transient error handling
             // For simplicity, we keep standard retries if implementing a policy, but here we just do basic call.
@@ -226,6 +239,21 @@ public class VirusTotalService : IVirusTotalService
         }
 
         return null;
+    }
+
+    private static string SanitizeFileName(string fileName)
+    {
+        // Replace characters that may cause issues in Content-Disposition header
+        // Keep only printable ASCII characters, replace others with underscores
+        var sb = new StringBuilder();
+        foreach (char c in fileName)
+        {
+            if (c >= 32 && c <= 126 && c != '"' && c != '\\')
+                sb.Append(c);
+            else
+                sb.Append('_');
+        }
+        return sb.ToString();
     }
 }
 

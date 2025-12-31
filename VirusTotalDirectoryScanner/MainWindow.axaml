@@ -104,10 +104,12 @@
                   </Grid>
 
                   <!-- Clean -->
-                  <StackPanel Orientation="Horizontal" Spacing="5" IsVisible="{Binding IsClean}">
-                    <PathIcon Data="M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z" Foreground="Green" />
-                    <TextBlock Text="Clean" VerticalAlignment="Center" Foreground="Green" />
-                  </StackPanel>
+                  <Button Command="{Binding #RootWindow.DataContext.OpenReportCommand}" CommandParameter="{Binding}" IsVisible="{Binding IsClean}" Padding="0" Background="Transparent" BorderThickness="0" Cursor="Hand" AutomationProperties.Name="Open Clean Report">
+                    <StackPanel Orientation="Horizontal" Spacing="5">
+                      <PathIcon Data="M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z" Foreground="Green" />
+                      <TextBlock Text="Clean" VerticalAlignment="Center" Foreground="Green" TextDecorations="Underline" />
+                    </StackPanel>
+                  </Button>
 
                   <!-- Compromised -->
                   <Button Command="{Binding #RootWindow.DataContext.OpenReportCommand}" CommandParameter="{Binding}" IsVisible="{Binding IsCompromised}" Padding="0" Background="Transparent" BorderThickness="0" Cursor="Hand" AutomationProperties.Name="Open Report">

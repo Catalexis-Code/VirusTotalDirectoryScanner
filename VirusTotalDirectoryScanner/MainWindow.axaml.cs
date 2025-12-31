@@ -6,6 +6,8 @@ using VirusTotalDirectoryScanner.Settings;
 using VirusTotalDirectoryScanner.ViewModels;
 using VirusTotalDirectoryScanner.Services;
 using Avalonia.Platform.Storage;
+using Avalonia.Automation;
+using Avalonia.VisualTree;
 
 namespace VirusTotalDirectoryScanner;
 
@@ -178,4 +180,49 @@ public sealed partial class MainWindow : Window
             }
         }
     }
+
+	private void ScanResultsGrid_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+	{
+		// Use Dispatcher to give the DataGrid time to realize the row container
+		Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+		{
+			if (sender is not DataGrid dataGrid || dataGrid.SelectedItem == null)
+				return;
+
+			// Scroll the selected item into view to ensure it's realized
+			dataGrid.ScrollIntoView(dataGrid.SelectedItem, null);
+
+			// Find the DataGridRow for the selected item using the visual tree
+			var row = FindRowForItem(dataGrid, dataGrid.SelectedItem);
+			if (row != null)
+			{
+				// Find the first DataGridCell within the row
+				// Mouse clicks focus cells, not rows, so we need to do the same
+				var cell = row.GetVisualDescendants().OfType<DataGridCell>().FirstOrDefault();
+				if (cell != null)
+				{
+					cell.Focus(NavigationMethod.Pointer);
+				}
+				else
+				{
+					// Fallback: focus the row if no cell found
+					row.Focus(NavigationMethod.Pointer);
+				}
+			}
+		}, Avalonia.Threading.DispatcherPriority.Background);
+	}
+
+	private static DataGridRow? FindRowForItem(DataGrid dataGrid, object item)
+	{
+		// Walk the visual tree to find DataGridRow instances
+		foreach (var child in dataGrid.GetVisualDescendants())
+		{
+			if (child is DataGridRow row && row.DataContext == item)
+			{
+				return row;
+			}
+		}
+		return null;
+	}
 }
+

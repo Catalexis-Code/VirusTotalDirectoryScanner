@@ -37,7 +37,12 @@
         <Button Grid.Column="1" Content="Clear" Command="{Binding ClearCommand}" VerticalAlignment="Bottom" AutomationProperties.Name="Clear" />
       </Grid>
 
-      <DataGrid Grid.Row="1" x:Name="ScanResultsGrid" ItemsSource="{Binding ScanResults}" AutoGenerateColumns="False" IsReadOnly="True" AutomationProperties.Name="Scan Results">
+      <!-- Live region for screen reader announcements (zero size keeps automation peer active) -->
+      <TextBlock x:Name="ScreenReaderAnnouncement" 
+                 Width="0" Height="0"
+                 AutomationProperties.LiveSetting="Assertive" />
+
+      <DataGrid Grid.Row="1" x:Name="ScanResultsGrid" ItemsSource="{Binding ScanResults}" AutoGenerateColumns="False" IsReadOnly="True" AutomationProperties.Name="Scan Results" SelectionChanged="ScanResultsGrid_SelectionChanged">
         <DataGrid.ContextMenu>
           <ContextMenu>
             <MenuItem Header="Copy" Click="CopyMenuItem_Click" InputGesture="Ctrl+C" />

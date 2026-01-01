@@ -54,12 +54,12 @@ public class ExclusionRegressionTests
         };
     }
 
-    private async Task WaitForScanStatus(ConcurrentBag<(ScanStatus Status, string FullPath, string Message)> results, string path, ScanStatus expectedStatus, int timeoutMs = 2000)
+    private async Task WaitForScanStatus(ConcurrentBag<(ScanStatus Status, string FullPath, string FileName, string Message)> results, string fileName, ScanStatus expectedStatus, int timeoutMs = 2000)
     {
         var startTime = DateTime.Now;
         while ((DateTime.Now - startTime).TotalMilliseconds < timeoutMs)
         {
-            if (results.Any(r => r.FullPath == path && r.Status == expectedStatus))
+            if (results.Any(r => r.FileName == fileName && r.Status == expectedStatus))
             {
                 return;
             }
@@ -89,8 +89,8 @@ public class ExclusionRegressionTests
         _vtServiceMock.Setup(v => v.ScanFileAsync(filePath, It.IsAny<Action<ScanPhase>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((ScanResultStatus.Clean, 0, "hash", "Clean"));
 
-        var results = new ConcurrentBag<(ScanStatus Status, string FullPath, string Message)>();
-        _sut.ScanResultUpdated += (s, e) => results.Add((e.Status, e.FullPath, e.Message));
+        var results = new ConcurrentBag<(ScanStatus Status, string FullPath, string FileName, string Message)>();
+        _sut.ScanResultUpdated += (s, e) => results.Add((e.Status, e.FullPath, e.FileName, e.Message));
 
         // Act
         _sut.Start();

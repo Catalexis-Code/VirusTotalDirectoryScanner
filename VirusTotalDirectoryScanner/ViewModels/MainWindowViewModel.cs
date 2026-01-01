@@ -260,4 +260,20 @@ public partial class MainWindowViewModel : ObservableObject
             ErrorMessage = $"Failed to open link: {ex.Message}";
         }
     }
+
+    [RelayCommand]
+    private void DeleteCompromisedFile(ScanResult? result)
+    {
+        if (result == null) return;
+
+        try
+        {
+            _fileOperationsService.DeleteFile(result.FullPath);
+            ScanResults.Remove(result);
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Failed to delete file: {ex.Message}";
+        }
+    }
 }

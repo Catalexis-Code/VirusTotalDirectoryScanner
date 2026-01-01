@@ -54,18 +54,18 @@ public class DirectoryScannerServiceTests
         };
     }
 
-    private async Task WaitForScanStatus(ConcurrentBag<(ScanStatus Status, string FullPath, string Message)> results, string path, ScanStatus expectedStatus, int timeoutMs = 2000)
+    private async Task WaitForScanStatus(ConcurrentBag<(ScanStatus Status, string FullPath, string FileName, string Message)> results, string fileName, ScanStatus expectedStatus, int timeoutMs = 2000)
     {
         var startTime = DateTime.Now;
         while ((DateTime.Now - startTime).TotalMilliseconds < timeoutMs)
         {
-            if (results.Any(r => r.FullPath == path && r.Status == expectedStatus))
+            if (results.Any(r => r.FileName == fileName && r.Status == expectedStatus))
             {
                 return;
             }
             await Task.Delay(50);
         }
-        throw new TimeoutException($"Timed out waiting for {path} to reach status {expectedStatus}");
+        throw new TimeoutException($"Timed out waiting for {fileName} to reach status {expectedStatus}");
     }
 
     [Fact]
@@ -81,22 +81,22 @@ public class DirectoryScannerServiceTests
         _vtServiceMock.Setup(v => v.ScanFileAsync(filePath, It.IsAny<Action<ScanPhase>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((ScanResultStatus.Clean, 0, "hash", "Clean"));
 
-        var results = new ConcurrentBag<(ScanStatus Status, string FullPath, string Message)>();
-        _sut.ScanResultUpdated += (s, e) => results.Add((e.Status, e.FullPath, e.Message));
+        var results = new ConcurrentBag<(ScanStatus Status, string FullPath, string FileName, string Message)>();
+        _sut.ScanResultUpdated += (s, e) => results.Add((e.Status, e.FullPath, e.FileName, e.Message));
 
         // Act
         _sut.Start();
 
         // Assert
-        await WaitForScanStatus(results, filePath, ScanStatus.Clean);
+        await WaitForScanStatus(results, "test.exe", ScanStatus.Clean);
 
         // We expect:
         // 1. Pending (from Enqueue)
         // 2. Scanning (from ProcessFile)
         // 3. Clean (from ProcessFile completion)
-        results.Should().Contain(r => r.Status == ScanStatus.Pending && r.FullPath == filePath);
-        results.Should().Contain(r => r.Status == ScanStatus.Scanning && r.FullPath == filePath);
-        results.Should().Contain(r => r.Status == ScanStatus.Clean && r.FullPath == filePath);
+        results.Should().Contain(r => r.Status == ScanStatus.Pending && r.FileName == "test.exe");
+        results.Should().Contain(r => r.Status == ScanStatus.Scanning && r.FileName == "test.exe");
+        results.Should().Contain(r => r.Status == ScanStatus.Clean && r.FileName == "test.exe");
         
         _vtServiceMock.Verify(v => v.ScanFileAsync(filePath, It.IsAny<Action<ScanPhase>>(), It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -127,12 +127,12 @@ public class DirectoryScannerServiceTests
         _vtServiceMock.Setup(v => v.ScanFileAsync(filePath, It.IsAny<Action<ScanPhase>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((ScanResultStatus.Compromised, 5, "hash", "Infected"));
 
-        var results = new ConcurrentBag<(ScanStatus Status, string FullPath, string Message)>();
-        _sut.ScanResultUpdated += (s, e) => results.Add((e.Status, e.FullPath, e.Message));
+        var results = new ConcurrentBag<(ScanStatus Status, string FullPath, string FileName, string Message)>();
+        _sut.ScanResultUpdated += (s, e) => results.Add((e.Status, e.FullPath, e.FileName, e.Message));
 
         // Act
         _sut.Start();
-        await WaitForScanStatus(results, filePath, ScanStatus.Compromised);
+        await WaitForScanStatus(results, "virus.exe", ScanStatus.Compromised);
 
         // Assert
         results.Should().Contain(r => r.Status == ScanStatus.Compromised);
@@ -164,12 +164,12 @@ public class DirectoryScannerServiceTests
         _vtServiceMock.Setup(v => v.ScanFileAsync(sourcePath, It.IsAny<Action<ScanPhase>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((ScanResultStatus.Clean, 0, "hash1", "Clean"));
 
-        var results = new ConcurrentBag<(ScanStatus Status, string FullPath, string Message)>();
-        _sut.ScanResultUpdated += (s, e) => results.Add((e.Status, e.FullPath, e.Message));
+        var results = new ConcurrentBag<(ScanStatus Status, string FullPath, string FileName, string Message)>();
+        _sut.ScanResultUpdated += (s, e) => results.Add((e.Status, e.FullPath, e.FileName, e.Message));
 
         // Act
         _sut.Start();
-        await WaitForScanStatus(results, sourcePath, ScanStatus.Clean); // Wait for processing
+        await WaitForScanStatus(results, fileName, ScanStatus.Clean); // Wait for processing
 
         // Assert
         // Should delete existing file
@@ -201,12 +201,12 @@ public class DirectoryScannerServiceTests
         _vtServiceMock.Setup(v => v.ScanFileAsync(sourcePath, It.IsAny<Action<ScanPhase>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((ScanResultStatus.Clean, 0, "hash1", "Clean"));
 
-        var results = new ConcurrentBag<(ScanStatus Status, string FullPath, string Message)>();
-        _sut.ScanResultUpdated += (s, e) => results.Add((e.Status, e.FullPath, e.Message));
+        var results = new ConcurrentBag<(ScanStatus Status, string FullPath, string FileName, string Message)>();
+        _sut.ScanResultUpdated += (s, e) => results.Add((e.Status, e.FullPath, e.FileName, e.Message));
 
         // Act
         _sut.Start();
-        await WaitForScanStatus(results, sourcePath, ScanStatus.Clean); // Wait for processing
+        await WaitForScanStatus(results, fileName, ScanStatus.Clean); // Wait for processing
 
         // Assert
         // Should NOT delete existing file
@@ -223,8 +223,8 @@ public class DirectoryScannerServiceTests
         _fileOpsMock.Setup(f => f.IsFileLocked(filePath)).Returns(false);
         _fileOpsMock.Setup(f => f.FileExists(filePath)).Returns(true);
 
-        var results = new ConcurrentBag<(ScanStatus Status, string FullPath, string Message)>();
-        _sut.ScanResultUpdated += (s, e) => results.Add((e.Status, e.FullPath, e.Message));
+        var results = new ConcurrentBag<(ScanStatus Status, string FullPath, string FileName, string Message)>();
+        _sut.ScanResultUpdated += (s, e) => results.Add((e.Status, e.FullPath, e.FileName, e.Message));
 
         // Act
         _sut.Start();
@@ -258,8 +258,8 @@ public class DirectoryScannerServiceTests
         _fileOpsMock.Setup(f => f.IsFileLocked(It.IsAny<string>())).Returns(false);
         _fileOpsMock.Setup(f => f.FileExists(It.IsAny<string>())).Returns(true);
 
-        var results = new ConcurrentBag<(ScanStatus Status, string FullPath, string Message)>();
-        _sut.ScanResultUpdated += (s, e) => results.Add((e.Status, e.FullPath, e.Message));
+        var results = new ConcurrentBag<(ScanStatus Status, string FullPath, string FileName, string Message)>();
+        _sut.ScanResultUpdated += (s, e) => results.Add((e.Status, e.FullPath, e.FileName, e.Message));
 
         // Act
         // Act
@@ -284,8 +284,8 @@ public class DirectoryScannerServiceTests
         _fileOpsMock.Setup(f => f.IsFileLocked(filePath)).Returns(false);
         _fileOpsMock.Setup(f => f.FileExists(filePath)).Returns(true);
 
-        var results = new ConcurrentBag<(ScanStatus Status, string FullPath, string Message)>();
-        _sut.ScanResultUpdated += (s, e) => results.Add((e.Status, e.FullPath, e.Message));
+        var results = new ConcurrentBag<(ScanStatus Status, string FullPath, string FileName, string Message)>();
+        _sut.ScanResultUpdated += (s, e) => results.Add((e.Status, e.FullPath, e.FileName, e.Message));
 
         // Act
         _sut.Start();
@@ -314,15 +314,15 @@ public class DirectoryScannerServiceTests
             })
             .ReturnsAsync((ScanResultStatus.Clean, 0, "hash", "Clean"));
 
-        var results = new ConcurrentBag<(ScanStatus Status, string FullPath, string Message)>();
-        _sut.ScanResultUpdated += (s, e) => results.Add((e.Status, e.FullPath, e.Message));
+        var results = new ConcurrentBag<(ScanStatus Status, string FullPath, string FileName, string Message)>();
+        _sut.ScanResultUpdated += (s, e) => results.Add((e.Status, e.FullPath, e.FileName, e.Message));
 
         // Act
         _sut.Start();
-        await WaitForScanStatus(results, filePath, ScanStatus.Clean);
+        await WaitForScanStatus(results, "test.exe", ScanStatus.Clean);
 
         // Assert
-        results.Should().Contain(r => r.Status == ScanStatus.CalculatingChecksum && r.FullPath == filePath);
-        results.Should().Contain(r => r.Status == ScanStatus.Uploading && r.FullPath == filePath);
+        results.Should().Contain(r => r.Status == ScanStatus.CalculatingChecksum && r.FileName == "test.exe");
+        results.Should().Contain(r => r.Status == ScanStatus.Uploading && r.FileName == "test.exe");
     }
 }

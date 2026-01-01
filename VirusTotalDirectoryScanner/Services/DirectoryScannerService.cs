@@ -404,7 +404,11 @@ public class DirectoryScannerService : IDisposable
 				result.Status = ScanStatus.Clean;
 				if (!result.SkipMoveOnComplete)
 				{
-					await MoveFileAsync(filePath, settings.Paths.CleanDirectory, _cts.Token);
+					var newPath = await MoveFileAsync(filePath, settings.Paths.CleanDirectory, _cts.Token);
+					if (newPath != null)
+					{
+						result.FullPath = newPath;
+					}
 					Log($"File {fileName} is CLEAN. Moved to clean directory.");
 				}
 				else
@@ -418,7 +422,11 @@ public class DirectoryScannerService : IDisposable
 				_notificationService.ShowThreatDetectedNotification(fileName, scanResult.DetectionCount);
 				if (!result.SkipMoveOnComplete)
 				{
-					await MoveFileAsync(filePath, settings.Paths.CompromisedDirectory, _cts.Token);
+					var newPath = await MoveFileAsync(filePath, settings.Paths.CompromisedDirectory, _cts.Token);
+					if (newPath != null)
+					{
+						result.FullPath = newPath;
+					}
 					Log($"File {fileName} is COMPROMISED. Moved to compromised directory.");
 				}
 				else
@@ -553,12 +561,12 @@ public class DirectoryScannerService : IDisposable
         }
     }
 
-    private async Task MoveFileAsync(string sourcePath, string? destDir, CancellationToken ct)
+    private async Task<string?> MoveFileAsync(string sourcePath, string? destDir, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(destDir))
         {
             Log($"Destination directory not configured for {Path.GetFileName(sourcePath)}");
-            return;
+            return null;
         }
 
         if (!_fileOperationsService.DirectoryExists(destDir))
@@ -587,6 +595,7 @@ public class DirectoryScannerService : IDisposable
         }
 
         _fileOperationsService.MoveFile(sourcePath, destPath);
+        return destPath;
     }
 
     private void Log(string message)

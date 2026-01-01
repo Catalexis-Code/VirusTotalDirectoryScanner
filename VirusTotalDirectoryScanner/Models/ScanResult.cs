@@ -26,8 +26,14 @@ public class ScanResult : INotifyPropertyChanged
     private string _message = string.Empty;
 
     public string FileName { get; set; } = string.Empty;
-    public string FullPath { get; set; } = string.Empty;
-    public string OriginalFullPath { get; set; } = string.Empty;
+	public string FullPath { get; set; } = string.Empty;
+	public string OriginalFullPath { get; set; } = string.Empty;
+	
+	/// <summary>
+	/// When true, the file will not be moved to Clean/Compromised directories after scanning.
+	/// Used for files that were dropped/selected by the user rather than monitored from the scan directory.
+	/// </summary>
+	public bool SkipMoveOnComplete { get; set; }
     
     public string Message
     {

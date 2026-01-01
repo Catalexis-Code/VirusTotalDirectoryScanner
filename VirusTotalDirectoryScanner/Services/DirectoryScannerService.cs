@@ -23,8 +23,9 @@ public class DirectoryScannerService : IDisposable
     private readonly CancellationTokenSource _cts = new();
     private Task? _processingTask;
     
-    private readonly ConcurrentDictionary<string, byte> _lockedFiles = new();
-    private readonly Timer _lockedFileTimer;
+	private readonly ConcurrentDictionary<string, byte> _lockedFiles = new();
+	private readonly ConcurrentDictionary<string, byte> _skipMoveFiles = new();
+	private readonly Timer _lockedFileTimer;
 
     // Constants for default delays
     public const int DefaultInitialDelayMs = 2000;
@@ -52,9 +53,43 @@ public class DirectoryScannerService : IDisposable
         _lockedFileTimer = new Timer(LockedFileCheckIntervalMs);
         _lockedFileTimer.Elapsed += OnLockedFileTimerElapsed;
         _lockedFileTimer.AutoReset = true;
-    }
+	}
 
-    public void Start()
+	/// <summary>
+	/// Scans a file that was dropped/selected by the user.
+	/// The file will NOT be moved to Clean/Compromised directories after scanning.
+	/// </summary>
+	public void ScanDroppedFile(string filePath)
+	{
+		if (!_fileOperationsService.FileExists(filePath))
+		{
+			LogMessage?.Invoke(this, $"Dropped file does not exist: {filePath}");
+			return;
+		}
+
+		var fileName = Path.GetFileName(filePath);
+		if (IsExcluded(fileName))
+		{
+			LogMessage?.Invoke(this, $"Dropped file is excluded: {fileName}");
+			return;
+		}
+
+		// Mark this file to skip moving after scan
+		_skipMoveFiles.TryAdd(filePath, 0);
+
+		// Notify UI of pending file
+		ScanResultUpdated?.Invoke(this, new ScanResult
+		{
+			FileName = fileName,
+			FullPath = filePath,
+			Status = ScanStatus.Pending,
+			SkipMoveOnComplete = true
+		});
+
+		_fileQueue.Enqueue(filePath);
+	}
+
+	public void Start()
     {
         var settings = _settingsService.CurrentSettings;
         if (string.IsNullOrWhiteSpace(settings.Paths.ScanDirectory))
@@ -219,13 +254,18 @@ public class DirectoryScannerService : IDisposable
             return;
         }
 
-        var fileName = Path.GetFileName(filePath);
-        var result = new ScanResult 
-        { 
-            FileName = fileName, 
-            FullPath = filePath, 
-            Status = ScanStatus.Scanning 
-        };
+		var fileName = Path.GetFileName(filePath);
+		
+		// Check if this file should skip moving (dropped file)
+		bool skipMove = _skipMoveFiles.TryRemove(filePath, out _);
+		
+		var result = new ScanResult 
+		{ 
+			FileName = fileName, 
+			FullPath = filePath, 
+			Status = ScanStatus.Scanning,
+			SkipMoveOnComplete = skipMove
+		};
         
         // Check against configured exclusions BEFORE emitting Scanning status
         var settings = _settingsService.CurrentSettings;
@@ -343,18 +383,32 @@ public class DirectoryScannerService : IDisposable
 
             // 3. Move and Update Status
 
-            if (scanResult.Status == ScanResultStatus.Clean)
-            {
-                result.Status = ScanStatus.Clean;
-                await MoveFileAsync(filePath, settings.Paths.CleanDirectory, _cts.Token);
-                Log($"File {fileName} is CLEAN. Moved to clean directory.");
-            }
-            else if (scanResult.Status == ScanResultStatus.Compromised)
-            {
-                result.Status = ScanStatus.Compromised;
-                await MoveFileAsync(filePath, settings.Paths.CompromisedDirectory, _cts.Token);
-                Log($"File {fileName} is COMPROMISED. Moved to compromised directory.");
-            }
+			if (scanResult.Status == ScanResultStatus.Clean)
+			{
+				result.Status = ScanStatus.Clean;
+				if (!result.SkipMoveOnComplete)
+				{
+					await MoveFileAsync(filePath, settings.Paths.CleanDirectory, _cts.Token);
+					Log($"File {fileName} is CLEAN. Moved to clean directory.");
+				}
+				else
+				{
+					Log($"File {fileName} is CLEAN. (Dropped file - not moved)");
+				}
+			}
+			else if (scanResult.Status == ScanResultStatus.Compromised)
+			{
+				result.Status = ScanStatus.Compromised;
+				if (!result.SkipMoveOnComplete)
+				{
+					await MoveFileAsync(filePath, settings.Paths.CompromisedDirectory, _cts.Token);
+					Log($"File {fileName} is COMPROMISED. Moved to compromised directory.");
+				}
+				else
+				{
+					Log($"File {fileName} is COMPROMISED. (Dropped file - not moved)");
+				}
+			}
             else if (scanResult.Status == ScanResultStatus.Failed)
             {
                 result.Status = ScanStatus.Failed;

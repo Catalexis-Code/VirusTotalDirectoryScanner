@@ -204,12 +204,30 @@ public partial class MainWindowViewModel : ObservableObject
         });
     }
 
-    [RelayCommand]
-    private void Clear()
-    {
-        ScanResults.Clear();
-        ErrorMessage = string.Empty;
-    }
+	[RelayCommand]
+	private void Clear()
+	{
+		ScanResults.Clear();
+		ErrorMessage = string.Empty;
+	}
+
+	/// <summary>
+	/// Scans files that were dropped onto the window or selected via file picker.
+	/// These files will NOT be moved after scanning - they remain in their original location.
+	/// </summary>
+	public void ScanDroppedFiles(IEnumerable<string> filePaths)
+	{
+		if (_scannerService == null)
+		{
+			ErrorMessage = "Scanner not running. Please configure the application first.";
+			return;
+		}
+
+		foreach (var filePath in filePaths)
+		{
+			_scannerService.ScanDroppedFile(filePath);
+		}
+	}
 
     [RelayCommand]
     private void OpenReport(ScanResult? result)

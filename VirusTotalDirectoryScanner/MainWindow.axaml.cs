@@ -20,26 +20,30 @@ public sealed partial class MainWindow : Window
     {
     }
 
-    public MainWindow(ISettingsService settingsService)
-    {
-        _settingsService = settingsService;
-        InitializeComponent();
-        
-        // Wire up keyboard shortcut for copy (Ctrl+C) using tunneling to intercept before DataGrid handles it
-        var dataGrid = this.FindControl<DataGrid>("ScanResultsGrid");
-        if (dataGrid != null)
-        {
-            dataGrid.AddHandler(KeyDownEvent, DataGrid_KeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
-        }
-        
-        Opened += (s, e) => 
-        {
-            if (DataContext is MainWindowViewModel vm)
-            {
-                vm.LoadedCommand.Execute(null);
-            }
-        };
-    }
+	public MainWindow(ISettingsService settingsService)
+	{
+		_settingsService = settingsService;
+		InitializeComponent();
+		
+		// Wire up keyboard shortcut for copy (Ctrl+C) using tunneling to intercept before DataGrid handles it
+		var dataGrid = this.FindControl<DataGrid>("ScanResultsGrid");
+		if (dataGrid != null)
+		{
+			dataGrid.AddHandler(KeyDownEvent, DataGrid_KeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
+		}
+		
+		// Wire up drag-and-drop handlers for the window
+		AddHandler(DragDrop.DragOverEvent, OnDragOver);
+		AddHandler(DragDrop.DropEvent, OnDrop);
+		
+		Opened += (s, e) => 
+		{
+			if (DataContext is MainWindowViewModel vm)
+			{
+				vm.LoadedCommand.Execute(null);
+			}
+		};
+	}
 
     private void InitializeComponent()
         => AvaloniaXamlLoader.Load(this);
@@ -223,6 +227,62 @@ public sealed partial class MainWindow : Window
 			}
 		}
 		return null;
+	}
+
+	// Drag-and-drop handlers
+	private void OnDragOver(object? sender, DragEventArgs e)
+	{
+		// Only accept file drops
+#pragma warning disable CS0618 // Type or member is obsolete
+		if (e.Data.Contains(DataFormats.Files))
+		{
+			e.DragEffects = DragDropEffects.Copy;
+		}
+		else
+		{
+			e.DragEffects = DragDropEffects.None;
+		}
+#pragma warning restore CS0618
+	}
+
+	private void OnDrop(object? sender, DragEventArgs e)
+	{
+#pragma warning disable CS0618 // Type or member is obsolete
+		if (e.Data.Contains(DataFormats.Files) && DataContext is MainWindowViewModel vm)
+		{
+			var files = e.Data.GetFiles();
+			if (files != null)
+			{
+				var filePaths = files
+					.Select(f => f.Path.LocalPath)
+					.Where(p => File.Exists(p)) // Only files, not directories
+					.ToList();
+				
+				if (filePaths.Count > 0)
+				{
+					vm.ScanDroppedFiles(filePaths);
+				}
+			}
+		}
+#pragma warning restore CS0618
+	}
+
+	private async void DropZone_PointerPressed(object? sender, PointerPressedEventArgs e)
+	{
+		if (DataContext is not MainWindowViewModel vm)
+			return;
+
+		var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+		{
+			Title = "Select Files to Scan",
+			AllowMultiple = true
+		});
+
+		if (files.Count > 0)
+		{
+			var filePaths = files.Select(f => f.Path.LocalPath).ToList();
+			vm.ScanDroppedFiles(filePaths);
+		}
 	}
 }
 

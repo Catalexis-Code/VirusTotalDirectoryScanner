@@ -407,6 +407,7 @@ public class DirectoryScannerService : IDisposable
 					var newPath = await MoveFileAsync(filePath, settings.Paths.CleanDirectory, _cts.Token);
 					if (newPath != null)
 					{
+						result.OriginalFullPath = filePath;
 						result.FullPath = newPath;
 					}
 					Log($"File {fileName} is CLEAN. Moved to clean directory.");
@@ -425,6 +426,7 @@ public class DirectoryScannerService : IDisposable
 					var newPath = await MoveFileAsync(filePath, settings.Paths.CompromisedDirectory, _cts.Token);
 					if (newPath != null)
 					{
+						result.OriginalFullPath = filePath;
 						result.FullPath = newPath;
 					}
 					Log($"File {fileName} is COMPROMISED. Moved to compromised directory.");

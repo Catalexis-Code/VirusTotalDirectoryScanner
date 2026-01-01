@@ -12,6 +12,17 @@ public enum ScanPhase
     WaitingForAnalysis
 }
 
+/// <summary>
+/// Result status from VirusTotal API scan.
+/// </summary>
+public enum ScanResultStatus
+{
+    Clean,
+    Compromised,
+    Unknown,
+    Failed
+}
+
 public interface IVirusTotalService
 {
     Task<(ScanResultStatus Status, int DetectionCount, string Hash, string? Message)> ScanFileAsync(
@@ -19,3 +30,4 @@ public interface IVirusTotalService
         Action<ScanPhase>? onPhaseChanged = null,
         CancellationToken ct = default);
 }
+

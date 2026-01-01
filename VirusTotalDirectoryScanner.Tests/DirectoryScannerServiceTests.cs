@@ -286,10 +286,10 @@ public class DirectoryScannerServiceTests
 
         // Act
         _sut.Start();
-        await WaitForScanStatus(results, filePath, ScanStatus.Skipped);
+        await Task.Delay(200); // Allow time for async processing
 
-        // Assert
-        results.Should().Contain(r => r.Status == ScanStatus.Skipped && r.Message == "Excluded");
+        // Assert - Excluded files should be silently skipped (no events emitted)
+        results.Should().NotContain(r => r.FullPath == filePath);
         _vtServiceMock.Verify(v => v.ScanFileAsync(It.IsAny<string>(), It.IsAny<Action<ScanPhase>>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 

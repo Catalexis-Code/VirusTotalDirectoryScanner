@@ -102,9 +102,9 @@ public class VirusTotalService : IVirusTotalService
             streamContent.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
             content.Add(streamContent);
             
-            // Upload itself typically doesn't need 429 retry in the same way, but could benefit from robust transient error handling
-            // For simplicity, we keep standard retries if implementing a policy, but here we just do basic call.
-            var response = await uploadClient.PostAsync(urlResponse.Data, content, ct);
+            // Wrap upload in retry logic for transient failures
+            var response = await ExecuteUploadWithRetryAsync(
+                () => uploadClient.PostAsync(urlResponse.Data, content, ct), ct);
             if (!response.IsSuccessStatusCode)
             {
                 var errorBody = await response.Content.ReadAsStringAsync(ct);
@@ -206,6 +206,28 @@ public class VirusTotalService : IVirusTotalService
         throw new InvalidOperationException("Unreachable code");
     }
 
+    private async Task<HttpResponseMessage> ExecuteUploadWithRetryAsync(Func<Task<HttpResponseMessage>> action, CancellationToken ct)
+    {
+        int maxRetries = 3;
+        int delay = 2000;
+
+        for (int i = 0; i <= maxRetries; i++)
+        {
+            var response = await action();
+            
+            // Retry on server errors or rate limiting
+            if (((int)response.StatusCode >= 500 || (int)response.StatusCode == 429) && i < maxRetries)
+            {
+                await Task.Delay(delay, ct);
+                delay *= 2;
+                continue;
+            }
+            
+            return response;
+        }
+        throw new InvalidOperationException("Unreachable code");
+    }
+
     private (ScanResultStatus Status, int DetectionCount) DetermineStatus(AnalysisStats? stats)
     {
         if (stats == null) return (ScanResultStatus.Unknown, 0);
@@ -262,12 +284,4 @@ public class VirusTotalService : IVirusTotalService
         }
         return sb.ToString();
     }
-}
-
-public enum ScanResultStatus
-{
-    Clean,
-    Compromised,
-    Unknown,
-    Failed
 }

@@ -114,6 +114,9 @@ public class DirectoryScannerService : IDisposable
 
         SetupWatcher();
 
+        // Sync timer interval in case it was configured after construction
+        _lockedFileTimer.Interval = LockedFileCheckIntervalMs;
+
         _processingTask = Task.Run(ProcessQueueAsync);
         LogMessage?.Invoke(this, $"Started monitoring {settings.Paths.ScanDirectory}");
         
@@ -201,41 +204,59 @@ public class DirectoryScannerService : IDisposable
 
         // Add a small delay to allow browser rename operations to complete
         // This helps prevent "ghost" files (intermediate GUIDs) from being picked up immediately
-        Task.Run(async () =>
+        _ = Task.Run(async () =>
         {
-            await Task.Delay(InitialDelayMs);
-            
-            var settings = _settingsService.CurrentSettings;
-            if (!string.IsNullOrEmpty(settings.Paths.LogFilePath) && 
-                string.Equals(Path.GetFullPath(fullPath), Path.GetFullPath(settings.Paths.LogFilePath), StringComparison.OrdinalIgnoreCase))
+            try
             {
-                return;
-            }
+                await Task.Delay(InitialDelayMs, _cts.Token);
+                
+                var settings = _settingsService.CurrentSettings;
+                if (!string.IsNullOrEmpty(settings.Paths.LogFilePath) && 
+                    string.Equals(Path.GetFullPath(fullPath), Path.GetFullPath(settings.Paths.LogFilePath), StringComparison.OrdinalIgnoreCase))
+                {
+                    return;
+                }
 
-            _fileQueue.Enqueue(fullPath);
-            
-            // Notify UI of pending file
-            ScanResultUpdated?.Invoke(this, new ScanResult 
-            { 
-                FileName = Path.GetFileName(fullPath), 
-                FullPath = fullPath, 
-                Status = ScanStatus.Pending 
-            });
+                _fileQueue.Enqueue(fullPath);
+                
+                // Notify UI of pending file
+                ScanResultUpdated?.Invoke(this, new ScanResult 
+                { 
+                    FileName = Path.GetFileName(fullPath), 
+                    FullPath = fullPath, 
+                    Status = ScanStatus.Pending 
+                });
+            }
+            catch (OperationCanceledException)
+            {
+                // Service is being disposed, ignore
+            }
+            catch (Exception ex)
+            {
+                Log($"Error enqueueing file {Path.GetFileName(fullPath)}: {ex.Message}");
+            }
         });
     }
 
     private async Task ProcessQueueAsync()
     {
-        while (!_cts.Token.IsCancellationRequested)
+        try
         {
-            if (_fileQueue.TryDequeue(out string? filePath))
+            while (!_cts.Token.IsCancellationRequested)
             {
-                await ProcessFileAsync(filePath);
+                if (_fileQueue.TryDequeue(out string? filePath))
+                {
+                    await ProcessFileAsync(filePath);
+                }
+                else
+                {
+                    await Task.Delay(QueuePollingIntervalMs, _cts.Token);
+                }
             }
-            else
-            {
-                await Task.Delay(QueuePollingIntervalMs, _cts.Token);
-            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected when service is disposed - exit gracefully
         }
     }
 
@@ -267,21 +288,13 @@ public class DirectoryScannerService : IDisposable
 			SkipMoveOnComplete = skipMove
 		};
         
-        // Check against configured exclusions BEFORE emitting Scanning status
-        var settings = _settingsService.CurrentSettings;
-        foreach (var pattern in settings.FileExclusions)
-        {
-            if (FileSystemName.MatchesSimpleExpression(pattern, fileName))
-            {
-                result.Status = ScanStatus.Skipped;
-                result.Message = "Excluded"; // Keep it short for UI
-                Log($"Skipping file {fileName}: Excluded by pattern '{pattern}'");
-                ScanResultUpdated?.Invoke(this, result);
-                return;
-            }
-        }
+        // Note: Files reaching this point have already passed exclusion checks in EnqueueFile/ScanExistingFiles.
+        // ScanDroppedFile also has its own exclusion check before enqueueing.
 
-        // Not excluded, so now we are scanning
+        // Get settings for move directories
+        var settings = _settingsService.CurrentSettings;
+
+        // File is ready to scan
         ScanResultUpdated?.Invoke(this, result);
 
         try
@@ -596,8 +609,20 @@ public class DirectoryScannerService : IDisposable
     public void Dispose()
     {
         _cts.Cancel();
+        
+        // Wait for processing task to complete before disposing resources
+        try
+        {
+            _processingTask?.Wait(TimeSpan.FromSeconds(5));
+        }
+        catch (AggregateException)
+        {
+            // Task may have been cancelled or faulted, ignore
+        }
+        
         _watcher?.Dispose();
         _lockedFileTimer.Stop();
         _lockedFileTimer.Dispose();
+        _cts.Dispose();
     }
 }

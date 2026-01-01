@@ -79,6 +79,7 @@ public sealed partial class App : Application
         services.AddSingleton<IFileOperationsService, FileOperationsService>();
         services.AddSingleton<IDirectoryWatcherFactory, DirectoryWatcherFactory>();
         services.AddSingleton<IRateLimitService, RateLimitService>();
+        services.AddSingleton<INotificationService, NotificationService>();
         
         services.AddHttpClient("VirusTotalUpload", (sp, client) =>
         {

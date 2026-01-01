@@ -14,6 +14,7 @@ public class DirectoryScannerService : IDisposable
     private readonly IFileOperationsService _fileOperationsService;
     private readonly IDirectoryWatcherFactory _watcherFactory;
     private readonly IRateLimitService _rateLimitService;
+    private readonly INotificationService _notificationService;
     
     public event EventHandler<ScanResult>? ScanResultUpdated;
     public event EventHandler<string>? LogMessage;
@@ -42,13 +43,15 @@ public class DirectoryScannerService : IDisposable
         ISettingsService settingsService,
         IFileOperationsService fileOperationsService,
         IDirectoryWatcherFactory watcherFactory,
-        IRateLimitService rateLimitService)
+        IRateLimitService rateLimitService,
+        INotificationService notificationService)
     {
         _vtService = vtService;
         _settingsService = settingsService;
         _fileOperationsService = fileOperationsService;
         _watcherFactory = watcherFactory;
         _rateLimitService = rateLimitService;
+        _notificationService = notificationService;
         
         _lockedFileTimer = new Timer(LockedFileCheckIntervalMs);
         _lockedFileTimer.Elapsed += OnLockedFileTimerElapsed;
@@ -412,6 +415,7 @@ public class DirectoryScannerService : IDisposable
 			else if (scanResult.Status == ScanResultStatus.Compromised)
 			{
 				result.Status = ScanStatus.Compromised;
+				_notificationService.ShowThreatDetectedNotification(fileName, scanResult.DetectionCount);
 				if (!result.SkipMoveOnComplete)
 				{
 					await MoveFileAsync(filePath, settings.Paths.CompromisedDirectory, _cts.Token);

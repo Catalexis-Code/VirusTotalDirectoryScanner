@@ -17,6 +17,7 @@ public class MainWindowViewModelTests
     private readonly Mock<IDirectoryWatcherFactory> _watcherFactoryMock;
     private readonly Mock<IDirectoryWatcher> _watcherMock;
     private readonly Mock<IRateLimitService> _rateLimitServiceMock;
+    private readonly Mock<INotificationService> _notificationServiceMock;
     private readonly MainWindowViewModel _sut;
     private readonly Settings.Settings _settings;
 
@@ -28,6 +29,7 @@ public class MainWindowViewModelTests
         _watcherFactoryMock = new Mock<IDirectoryWatcherFactory>();
         _watcherMock = new Mock<IDirectoryWatcher>();
         _rateLimitServiceMock = new Mock<IRateLimitService>();
+        _notificationServiceMock = new Mock<INotificationService>();
         
         _settings = new Settings.Settings();
         _settings.Paths.ScanDirectory = "C:\\Scan"; // Set ScanDirectory
@@ -40,7 +42,8 @@ public class MainWindowViewModelTests
             _settingsServiceMock.Object,
             _fileOpsMock.Object,
             _watcherFactoryMock.Object,
-            _rateLimitServiceMock.Object);
+            _rateLimitServiceMock.Object,
+            _notificationServiceMock.Object);
 
         _sut = new MainWindowViewModel(
             () => scannerService,

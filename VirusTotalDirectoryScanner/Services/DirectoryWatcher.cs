@@ -40,6 +40,10 @@ public class DirectoryWatcher : IDirectoryWatcher
         set => _watcher.EnableRaisingEvents = value;
     }
 
+    public string Path => _watcher.Path;
+    
+    public bool IsWatching => _watcher.EnableRaisingEvents;
+
     public void Dispose()
     {
         _watcher.Dispose();

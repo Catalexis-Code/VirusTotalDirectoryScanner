@@ -10,6 +10,7 @@ public interface IFileOperationsService
     void MoveFile(string sourceFileName, string destFileName);
     void DeleteFile(string path);
     void AppendAllText(string path, string contents);
+    void WriteAllText(string path, string contents);
     Stream OpenRead(string path);
     long GetFileLength(string path);
     Task<string> CalculateSha256Async(string filePath, CancellationToken ct = default);

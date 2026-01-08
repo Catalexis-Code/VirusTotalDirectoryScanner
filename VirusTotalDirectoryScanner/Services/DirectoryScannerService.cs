@@ -27,16 +27,27 @@ public class DirectoryScannerService : IDisposable
 	private readonly ConcurrentDictionary<string, byte> _lockedFiles = new();
 	private readonly ConcurrentDictionary<string, byte> _skipMoveFiles = new();
 	private readonly Timer _lockedFileTimer;
+	private readonly Timer _watcherHealthTimer;
+
+    // Health check state
+    private volatile bool _healthCheckFileDetected = false;
+    private string? _currentHealthCheckFilePath = null;
+    private readonly object _healthCheckLock = new();
+    
+    // Prefix for health check files - these are automatically excluded from scanning
+    internal const string HealthCheckFilePrefix = ".vt_health_check_";
 
     // Constants for default delays
     public const int DefaultInitialDelayMs = 2000;
     public const int DefaultQueuePollingIntervalMs = 1000;
     public const int DefaultLockedFileCheckIntervalMs = 5000;
+    public const int DefaultWatcherHealthCheckIntervalMs = 300000; // 5 minutes
 
     // Configurable delays for testing
     internal int InitialDelayMs { get; set; } = DefaultInitialDelayMs;
     internal int QueuePollingIntervalMs { get; set; } = DefaultQueuePollingIntervalMs;
     internal int LockedFileCheckIntervalMs { get; set; } = DefaultLockedFileCheckIntervalMs;
+    internal int WatcherHealthCheckIntervalMs { get; set; } = DefaultWatcherHealthCheckIntervalMs;
 
     public DirectoryScannerService(
         IVirusTotalService vtService, 
@@ -56,6 +67,10 @@ public class DirectoryScannerService : IDisposable
         _lockedFileTimer = new Timer(LockedFileCheckIntervalMs);
         _lockedFileTimer.Elapsed += OnLockedFileTimerElapsed;
         _lockedFileTimer.AutoReset = true;
+        
+        _watcherHealthTimer = new Timer(WatcherHealthCheckIntervalMs);
+        _watcherHealthTimer.Elapsed += OnWatcherHealthCheckElapsed;
+        _watcherHealthTimer.AutoReset = true;
 	}
 
 	/// <summary>
@@ -117,8 +132,13 @@ public class DirectoryScannerService : IDisposable
 
         SetupWatcher();
 
-        // Sync timer interval in case it was configured after construction
+        // Sync timer intervals in case they were configured after construction
         _lockedFileTimer.Interval = LockedFileCheckIntervalMs;
+        _watcherHealthTimer.Interval = WatcherHealthCheckIntervalMs;
+        
+        // Start the watcher health check timer
+        _watcherHealthTimer.Start();
+        Log($"Watcher health check timer started (interval: {WatcherHealthCheckIntervalMs / 1000}s)");
 
         _processingTask = Task.Run(ProcessQueueAsync);
         LogMessage?.Invoke(this, $"Started monitoring {settings.Paths.ScanDirectory}");
@@ -181,11 +201,33 @@ public class DirectoryScannerService : IDisposable
 
     private void OnFileCreated(object sender, FileSystemEventArgs e)
     {
+        // Check if this is a health check file
+        var fileName = Path.GetFileName(e.FullPath);
+        if (fileName.StartsWith(HealthCheckFilePrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            lock (_healthCheckLock)
+            {
+                if (_currentHealthCheckFilePath != null && 
+                    string.Equals(e.FullPath, _currentHealthCheckFilePath, StringComparison.OrdinalIgnoreCase))
+                {
+                    _healthCheckFileDetected = true;
+                    Log("Health check: Watcher is functioning correctly.");
+                }
+            }
+            return; // Don't enqueue health check files
+        }
+        
         EnqueueFile(e.FullPath);
     }
 
     private bool IsExcluded(string fileName)
     {
+        // Health check files are always excluded
+        if (fileName.StartsWith(HealthCheckFilePrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+        
         var settings = _settingsService.CurrentSettings;
         foreach (var pattern in settings.FileExclusions)
         {
@@ -621,6 +663,90 @@ public class DirectoryScannerService : IDisposable
         }
     }
 
+    private void OnWatcherHealthCheckElapsed(object? sender, ElapsedEventArgs e)
+    {
+        var settings = _settingsService.CurrentSettings;
+        if (string.IsNullOrWhiteSpace(settings.Paths.ScanDirectory))
+        {
+            return;
+        }
+        
+        if (!_fileOperationsService.DirectoryExists(settings.Paths.ScanDirectory))
+        {
+            Log("Health check: Scan directory does not exist. Skipping health check.");
+            return;
+        }
+
+        string healthCheckFilePath = Path.Combine(
+            settings.Paths.ScanDirectory, 
+            $"{HealthCheckFilePrefix}{Guid.NewGuid():N}");
+
+        try
+        {
+            // Reset detection flag and set current health check file
+            lock (_healthCheckLock)
+            {
+                _healthCheckFileDetected = false;
+                _currentHealthCheckFilePath = healthCheckFilePath;
+            }
+
+            // Create the health check file
+            _fileOperationsService.WriteAllText(healthCheckFilePath, "health_check");
+            Log($"Health check: Created test file {Path.GetFileName(healthCheckFilePath)}");
+
+            // Wait a short time for the watcher to detect the file
+            // Use a shorter wait than the normal initial delay since we just want to verify detection
+            Thread.Sleep(Math.Min(InitialDelayMs, 1000));
+
+            bool detected;
+            lock (_healthCheckLock)
+            {
+                detected = _healthCheckFileDetected;
+                _currentHealthCheckFilePath = null;
+            }
+
+            if (!detected)
+            {
+                // Check if watcher is still enabled
+                bool watcherEnabled = _watcher?.IsWatching ?? false;
+                Log($"Health check FAILED: Test file was not detected. Watcher enabled: {watcherEnabled}. Restarting watcher...");
+                
+                // Restart the watcher
+                SetupWatcher();
+                
+                // Also scan existing files in case any were missed
+                ScanExistingFiles();
+                
+                Log("Health check: Watcher has been restarted.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Log($"Health check error: {ex.Message}");
+        }
+        finally
+        {
+            // Clean up the health check file
+            try
+            {
+                if (_fileOperationsService.FileExists(healthCheckFilePath))
+                {
+                    _fileOperationsService.DeleteFile(healthCheckFilePath);
+                    Log($"Health check: Cleaned up test file {Path.GetFileName(healthCheckFilePath)}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Log($"Health check cleanup error: {ex.Message}");
+            }
+            
+            lock (_healthCheckLock)
+            {
+                _currentHealthCheckFilePath = null;
+            }
+        }
+    }
+
     public void Dispose()
     {
         _cts.Cancel();
@@ -638,6 +764,8 @@ public class DirectoryScannerService : IDisposable
         _watcher?.Dispose();
         _lockedFileTimer.Stop();
         _lockedFileTimer.Dispose();
+        _watcherHealthTimer.Stop();
+        _watcherHealthTimer.Dispose();
         _cts.Dispose();
     }
 }

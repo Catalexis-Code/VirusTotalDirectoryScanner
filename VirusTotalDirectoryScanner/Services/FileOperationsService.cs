@@ -57,6 +57,11 @@ public class FileOperationsService : IFileOperationsService
         File.AppendAllText(path, contents);
     }
 
+    public void WriteAllText(string path, string contents)
+    {
+        File.WriteAllText(path, contents);
+    }
+
     public Stream OpenRead(string path)
     {
         return File.OpenRead(path);

@@ -29,6 +29,9 @@ public partial class MainWindowViewModel : ObservableObject
     public bool HasError => !string.IsNullOrEmpty(ErrorMessage);
 
     [ObservableProperty]
+    private bool _isDirectoryUnavailable;
+
+    [ObservableProperty]
     private string _scanDirectoryName = "None";
 
     [ObservableProperty]
@@ -121,6 +124,7 @@ public partial class MainWindowViewModel : ObservableObject
             _scannerService = _scannerFactory();
             _scannerService.ScanResultUpdated += OnScanResultUpdated;
             _scannerService.LogMessage += OnLogMessage;
+            _scannerService.DirectoryAvailabilityChanged += OnDirectoryAvailabilityChanged;
             
             _scannerService.Start();
             StatusText = "Monitoring:";
@@ -137,10 +141,12 @@ public partial class MainWindowViewModel : ObservableObject
     private void StopScanning()
     {
         IsMonitoring = false;
+        IsDirectoryUnavailable = false;
         if (_scannerService != null)
         {
             _scannerService.ScanResultUpdated -= OnScanResultUpdated;
             _scannerService.LogMessage -= OnLogMessage;
+            _scannerService.DirectoryAvailabilityChanged -= OnDirectoryAvailabilityChanged;
             _scannerService.Dispose();
             _scannerService = null;
         }
@@ -201,6 +207,14 @@ public partial class MainWindowViewModel : ObservableObject
             {
                 ErrorMessage = message;
             }
+        });
+    }
+
+    private void OnDirectoryAvailabilityChanged(object? sender, bool isAvailable)
+    {
+        Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            IsDirectoryUnavailable = !isAvailable;
         });
     }
 

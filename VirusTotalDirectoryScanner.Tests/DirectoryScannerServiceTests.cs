@@ -102,16 +102,20 @@ public class DirectoryScannerServiceTests
     }
 
     [Fact]
-    public async Task Start_ShouldCreateDirectory_IfItDoesNotExist()
+    public async Task Start_ShouldFireDirectoryUnavailable_WhenDirectoryDoesNotExist()
     {
         // Arrange
         _fileOpsMock.Setup(f => f.DirectoryExists(_settings.Paths.ScanDirectory!)).Returns(false);
+        
+        bool? availabilityStatus = null;
+        _sut.DirectoryAvailabilityChanged += (s, isAvailable) => availabilityStatus = isAvailable;
 
         // Act
         _sut.Start();
 
-        // Assert
-        _fileOpsMock.Verify(f => f.CreateDirectory(_settings.Paths.ScanDirectory!), Times.Once);
+        // Assert - should fire event with false, NOT create directory
+        availabilityStatus.Should().BeFalse();
+        _fileOpsMock.Verify(f => f.CreateDirectory(It.IsAny<string>()), Times.Never);
     }
 
     [Fact]

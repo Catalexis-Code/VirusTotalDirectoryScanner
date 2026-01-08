@@ -18,6 +18,7 @@ public class DirectoryScannerService : IDisposable
     
     public event EventHandler<ScanResult>? ScanResultUpdated;
     public event EventHandler<string>? LogMessage;
+    public event EventHandler<bool>? DirectoryAvailabilityChanged; // true = available, false = unavailable
 
     private IDirectoryWatcher? _watcher;
     private readonly ConcurrentQueue<string> _fileQueue = new();
@@ -33,6 +34,7 @@ public class DirectoryScannerService : IDisposable
     private volatile bool _healthCheckFileDetected = false;
     private string? _currentHealthCheckFilePath = null;
     private readonly object _healthCheckLock = new();
+    private bool _isDirectoryAvailable = true;
     
     // Prefix for health check files - these are automatically excluded from scanning
     internal const string HealthCheckFilePrefix = ".vt_health_check_";
@@ -116,34 +118,32 @@ public class DirectoryScannerService : IDisposable
             return;
         }
 
-        if (!_fileOperationsService.DirectoryExists(settings.Paths.ScanDirectory))
+        bool directoryReady = _fileOperationsService.DirectoryExists(settings.Paths.ScanDirectory);
+        
+        if (!directoryReady)
         {
-            try
-            {
-                _fileOperationsService.CreateDirectory(settings.Paths.ScanDirectory);
-                LogMessage?.Invoke(this, $"Created scan directory: {settings.Paths.ScanDirectory}");
-            }
-            catch (Exception ex)
-            {
-                LogMessage?.Invoke(this, $"Failed to create scan directory: {ex.Message}");
-                return;
-            }
+            LogMessage?.Invoke(this, $"Scan directory does not exist: {settings.Paths.ScanDirectory}. Waiting for directory to become available.");
+            _isDirectoryAvailable = false;
+            DirectoryAvailabilityChanged?.Invoke(this, false);
         }
 
-        SetupWatcher();
+        if (directoryReady)
+        {
+            SetupWatcher();
+            ScanExistingFiles();
+            LogMessage?.Invoke(this, $"Started monitoring {settings.Paths.ScanDirectory}");
+        }
 
         // Sync timer intervals in case they were configured after construction
         _lockedFileTimer.Interval = LockedFileCheckIntervalMs;
         _watcherHealthTimer.Interval = WatcherHealthCheckIntervalMs;
         
-        // Start the watcher health check timer
+        // Start the watcher health check timer - always start even if directory unavailable
+        // so we can detect when it becomes available
         _watcherHealthTimer.Start();
         Log($"Watcher health check timer started (interval: {WatcherHealthCheckIntervalMs / 1000}s)");
 
         _processingTask = Task.Run(ProcessQueueAsync);
-        LogMessage?.Invoke(this, $"Started monitoring {settings.Paths.ScanDirectory}");
-        
-        ScanExistingFiles();
     }
 
     private void SetupWatcher()
@@ -652,6 +652,22 @@ public class DirectoryScannerService : IDisposable
             if (!string.IsNullOrWhiteSpace(settings.Paths.LogFilePath))
             {
                 string logDir = Path.GetDirectoryName(settings.Paths.LogFilePath)!;
+                
+                // If the log directory is inside the scan directory and scan directory doesn't exist,
+                // skip writing to the log file to avoid creating the scan directory prematurely
+                if (!string.IsNullOrWhiteSpace(settings.Paths.ScanDirectory))
+                {
+                    string scanDirFull = Path.GetFullPath(settings.Paths.ScanDirectory);
+                    string logDirFull = Path.GetFullPath(logDir);
+                    
+                    if (logDirFull.StartsWith(scanDirFull, StringComparison.OrdinalIgnoreCase) &&
+                        !_fileOperationsService.DirectoryExists(scanDirFull))
+                    {
+                        // Log directory is inside scan directory which doesn't exist yet - skip logging to file
+                        return;
+                    }
+                }
+                
                 if (!_fileOperationsService.DirectoryExists(logDir)) _fileOperationsService.CreateDirectory(logDir);
                 
                 _fileOperationsService.AppendAllText(settings.Paths.LogFilePath, $"{DateTime.Now}: {message}{Environment.NewLine}");
@@ -671,10 +687,38 @@ public class DirectoryScannerService : IDisposable
             return;
         }
         
-        if (!_fileOperationsService.DirectoryExists(settings.Paths.ScanDirectory))
+        bool directoryExists = _fileOperationsService.DirectoryExists(settings.Paths.ScanDirectory);
+        
+        // Handle directory availability changes
+        if (!directoryExists)
         {
-            Log("Health check: Scan directory does not exist. Skipping health check.");
+            if (_isDirectoryAvailable)
+            {
+                // Directory was available but is now unavailable
+                _isDirectoryAvailable = false;
+                Log("Health check: Scan directory is no longer available.");
+                DirectoryAvailabilityChanged?.Invoke(this, false);
+            }
+            else
+            {
+                Log("Health check: Scan directory still not available. Waiting...");
+            }
             return;
+        }
+        
+        // Directory exists - check if we need to recover
+        if (!_isDirectoryAvailable)
+        {
+            // Directory was unavailable but is now available - auto-recover!
+            _isDirectoryAvailable = true;
+            Log("Health check: Scan directory is now available. Recovering...");
+            DirectoryAvailabilityChanged?.Invoke(this, true);
+            
+            // Restart the watcher and scan existing files
+            SetupWatcher();
+            ScanExistingFiles();
+            Log("Health check: Watcher recovered and monitoring resumed.");
+            return; // Skip the normal health check this cycle
         }
 
         string healthCheckFilePath = Path.Combine(

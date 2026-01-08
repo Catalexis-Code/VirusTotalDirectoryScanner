@@ -26,6 +26,13 @@
             <TextBlock Text="{Binding StatusText}" VerticalAlignment="Center" />
             <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding IsMonitoring}">
               <TextBlock Text="{Binding ScanDirectoryName}" ToolTip.Tip="{Binding ScanDirectoryPath}" FontWeight="Bold" VerticalAlignment="Center" />
+              <TextBlock Text="⚠" 
+                         Foreground="Orange" 
+                         FontSize="16" 
+                         FontWeight="Bold" 
+                         VerticalAlignment="Center"
+                         IsVisible="{Binding IsDirectoryUnavailable}"
+                         ToolTip.Tip="Directory is not available. Monitoring will resume automatically when the directory becomes accessible." />
               <Button Command="{Binding BrowseDirectoryCommand}" ToolTip.Tip="Change Directory" Padding="4" Background="Transparent" AutomationProperties.Name="Change Directory">
                 <PathIcon Data="M10,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V8C22,6.89 21.1,6 20,6H12L10,4Z" Width="16" Height="16" />
               </Button>

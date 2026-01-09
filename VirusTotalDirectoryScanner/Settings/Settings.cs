@@ -53,7 +53,6 @@ public sealed class GeneralSettings
 	public int PollingTimeoutMinutes { get; set; } = 15;
 }
 
-
 public sealed class PathsSettings
 {
 	public string? ScanDirectory { get; set; }

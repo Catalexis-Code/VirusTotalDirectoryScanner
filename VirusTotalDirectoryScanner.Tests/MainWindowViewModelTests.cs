@@ -63,7 +63,7 @@ public class MainWindowViewModelTests
         _sut.LoadedCommand.Execute(null);
 
         // Assert
-        _sut.StatusText.Should().Contain("Monitoring");
+        _sut.StatusText.Should().Contain("Scanning");
     }
 
     [Fact]
@@ -110,6 +110,25 @@ public class MainWindowViewModelTests
         // Assert
         _sut.ErrorMessage.Should().Contain("Failed to delete file");
         _sut.ScanResults.Should().Contain(result); // File should still be in list if delete failed
+    }
+
+    [Fact]
+    public void TogglePause_ShouldToggleIsPausedAndStatusText()
+    {
+        // Arrange
+        _settingsServiceMock.Setup(s => s.ApiKey).Returns("valid_key");
+        _fileOpsMock.Setup(f => f.DirectoryExists(It.IsAny<string>())).Returns(true);
+        _sut.LoadedCommand.Execute(null); // Starts scanning
+
+        // Act & Assert (Toggle ON)
+        _sut.TogglePauseCommand.Execute(null);
+        _sut.IsPaused.Should().BeTrue();
+        _sut.StatusText.Should().Be("Paused:");
+
+        // Act & Assert (Toggle OFF)
+        _sut.TogglePauseCommand.Execute(null);
+        _sut.IsPaused.Should().BeFalse();
+        _sut.StatusText.Should().Be("Scanning:");
     }
 }
 

@@ -23,6 +23,9 @@ public partial class MainWindowViewModel : ObservableObject
     private bool _isMonitoring;
 
     [ObservableProperty]
+    private bool _isPaused;
+
+    [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasError))]
     private string _errorMessage = string.Empty;
 
@@ -94,6 +97,7 @@ public partial class MainWindowViewModel : ObservableObject
     [RelayCommand]
     private void StartScanning()
     {
+        IsPaused = false;
         StopScanning();
         ErrorMessage = string.Empty;
 
@@ -127,7 +131,7 @@ public partial class MainWindowViewModel : ObservableObject
             _scannerService.DirectoryAvailabilityChanged += OnDirectoryAvailabilityChanged;
             
             _scannerService.Start();
-            StatusText = "Monitoring:";
+            StatusText = "Scanning:";
             IsMonitoring = true;
         }
         catch (Exception ex)
@@ -141,6 +145,7 @@ public partial class MainWindowViewModel : ObservableObject
     private void StopScanning()
     {
         IsMonitoring = false;
+        IsPaused = false;
         IsDirectoryUnavailable = false;
         if (_scannerService != null)
         {
@@ -150,6 +155,16 @@ public partial class MainWindowViewModel : ObservableObject
             _scannerService.Dispose();
             _scannerService = null;
         }
+    }
+
+    [RelayCommand]
+    private void TogglePause()
+    {
+        if (_scannerService == null) return;
+
+        IsPaused = !IsPaused;
+        _scannerService.IsPaused = IsPaused;
+        StatusText = IsPaused ? "Paused:" : "Scanning:";
     }
 
     private void OnScanResultUpdated(object? sender, ScanResult result)

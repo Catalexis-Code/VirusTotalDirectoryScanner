@@ -35,6 +35,20 @@ public class DirectoryScannerService : IDisposable
     private string? _currentHealthCheckFilePath = null;
     private readonly object _healthCheckLock = new();
     private bool _isDirectoryAvailable = true;
+    private bool _isPaused = false;
+    
+    public bool IsPaused
+    {
+        get => _isPaused;
+        set
+        {
+            _isPaused = value;
+            if (!_isPaused)
+            {
+                // Trigger health check or just wait for next poll
+            }
+        }
+    }
     
     // Prefix for health check files - these are automatically excluded from scanning
     internal const string HealthCheckFilePrefix = ".vt_health_check_";
@@ -131,7 +145,7 @@ public class DirectoryScannerService : IDisposable
         {
             SetupWatcher();
             ScanExistingFiles();
-            LogMessage?.Invoke(this, $"Started monitoring {settings.Paths.ScanDirectory}");
+            LogMessage?.Invoke(this, $"Started scanning {settings.Paths.ScanDirectory}");
         }
 
         // Sync timer intervals in case they were configured after construction
@@ -289,7 +303,7 @@ public class DirectoryScannerService : IDisposable
         {
             while (!_cts.Token.IsCancellationRequested)
             {
-                if (_fileQueue.TryDequeue(out string? filePath))
+                if (!_isPaused && _fileQueue.TryDequeue(out string? filePath))
                 {
                     await ProcessFileAsync(filePath);
                 }

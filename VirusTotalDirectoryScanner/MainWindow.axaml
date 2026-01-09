@@ -5,15 +5,17 @@
         x:Class="VirusTotalDirectoryScanner.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Title="VirusTotalDirectoryScanner"
+        Icon="avares://VirusTotalDirectoryScanner/Assets/logo.png"
         WindowStartupLocation="CenterScreen"
         Width="520"
         Height="600"
         x:Name="RootWindow"
         DragDrop.AllowDrop="True">
   <Grid Margin="16" RowDefinitions="Auto,Auto,*,Auto,Auto" RowSpacing="12">
-    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
-      <TextBlock FontSize="20" FontWeight="SemiBold" Text="VirusTotalDirectoryScanner" />
-      <Button Grid.Column="1" Content="Settings…" Command="{Binding OpenSettingsCommand}" AutomationProperties.Name="Settings" />
+    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+      <Image Source="avares://VirusTotalDirectoryScanner/Assets/logo.png" Width="64" Height="64" VerticalAlignment="Center" />
+      <TextBlock Grid.Column="1" FontSize="20" FontWeight="SemiBold" Text="VirusTotalDirectoryScanner" VerticalAlignment="Center" />
+      <Button Grid.Column="2" Content="Settings…" Command="{Binding OpenSettingsCommand}" AutomationProperties.Name="Settings" />
     </Grid>
 
     <Separator Grid.Row="1" />

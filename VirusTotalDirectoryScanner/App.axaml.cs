@@ -36,7 +36,7 @@ public sealed partial class App : Application
 
             var trayIcon = new TrayIcon
             {
-                Icon = new WindowIcon(AssetLoader.Open(new Uri("avares://VirusTotalDirectoryScanner/Assets/VT-Directory-Scanner-Logojpg.jpg"))),
+                Icon = new WindowIcon(AssetLoader.Open(new Uri("avares://VirusTotalDirectoryScanner/Assets/logo.png"))),
                 ToolTipText = "VirusTotal Directory Scanner"
             };
 

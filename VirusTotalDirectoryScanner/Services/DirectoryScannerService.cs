@@ -731,7 +731,7 @@ public class DirectoryScannerService : IDisposable
             // Restart the watcher and scan existing files
             SetupWatcher();
             ScanExistingFiles();
-            Log("Health check: Watcher recovered and monitoring resumed.");
+            Log("Health check: Watcher recovered and scanning resumed.");
             return; // Skip the normal health check this cycle
         }
 

@@ -46,7 +46,7 @@
                               FontWeight="Bold" 
                               VerticalAlignment="Center"
                               IsVisible="{Binding IsDirectoryUnavailable}"
-                              ToolTip.Tip="Directory is not available. Monitoring will resume automatically when the directory becomes accessible." />
+                              ToolTip.Tip="Directory is not available. Scanning will resume automatically when the directory becomes accessible." />
                  </StackPanel>
                </StackPanel>
             </Button>

@@ -65,7 +65,7 @@ public sealed partial class MainWindow : Window
 
         var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
         {
-            Title = "Select Folder to Monitor",
+            Title = "Select Folder to Scan",
             AllowMultiple = false
         });
 

@@ -1,108 +1,97 @@
 # VirusTotalDirectoryScanner
 
-**VirusTotalDirectoryScanner** is a robust desktop application built with **.NET 10** and **Avalonia UI** that automates the process of scanning files for malware. It monitors a specific directory (we recommend that you configure it to your downloads directory), automatically uploads new files to [VirusTotal](https://www.virustotal.com/), and sorts them into "Clean" or "Compromised" folders based on the scan results.
+**Drop files. Get scanned by 70+ antivirus engines. Sleep soundly. 🛡️**
 
-## About VirusTotal
+![VirusTotal Directory Scanner in action](Images/main-screenshot.png)
 
-## What is Virus Total? 
-**VirusTotal** is a free cloud-based malware scanning service that checks files using dozens of antivirus engines. It helps detect threats missed by single tools, provides quick results, and leverages community data for improved accuracy. Integrating it ensures a fast, reliable, and comprehensive way to verify file safety.
+## Why This Exists
 
+Let's be honest: manually uploading files to VirusTotal is *tedious*. But nevertheless, even with antivirus software running on my computer, I'm the kind of person who scans *everything*. Call it paranoid, call it "I've seen what malware can do and I'm not taking any chances."
 
-## 🚀 Features
+So I built this. A desktop app that watches a folder (like your Downloads), automatically submits new files to VirusTotal's army of 70+ antivirus engines, and sorts them into "Clean" or "Compromised" folders. No more manual uploads. Just set it and forget it.
 
-*   **Real-time Directory Monitoring**: Automatically detects new files added to a watched folder.
-*   **VirusTotal API Integration**: Seamlessly uploads and scans files using the VirusTotal v3 API.
-*   **Automated Sorting**:
-    *   **Clean**: Files with no detections are moved to a safe directory.
-    *   **Compromised**: Files with detections are isolated in a separate directory.
-*   **Smart Quota Management**: Built-in rate limiting to respect your VirusTotal API quotas (requests per minute, day, and month).
-*   **Modern UI**: Clean and responsive user interface built with Avalonia UI.
-*   **Configurable**: Easy management of API keys, directory paths, and scan settings.
+## How It Works (The Fun Part)
 
-## 🛠️ Tech Stack
+1. **Pick a folder to scan** — Point the app at any directory (your Downloads folder is the prime suspect here).
 
-*   **Framework**: [.NET 10.0](https://dotnet.microsoft.com/)
-*   **UI Framework**: [Avalonia UI](https://avaloniaui.net/) (v11.x)
-*   **MVVM**: [CommunityToolkit.Mvvm](https://github.com/CommunityToolkit/dotnet)
-*   **API Client**: [Refit](https://github.com/reactiveui/refit)
-*   **Dependency Injection**: Microsoft.Extensions.DependencyInjection
-*   **Testing**: xUnit, FluentAssertions, Moq
+2. **Drop files in** — Either let files land in your scan folder naturally, or drag-and-drop them directly into the app's drop zone.
 
-## 📋 Prerequisites
+3. **Watch the magic happen** — Each file gets:
+   - Its checksum calculated
+   - Sent off to VirusTotal for analysis
+   - Scanned by 70+ antivirus engines simultaneously
 
-*   **.NET 10.0 SDK** installed on your machine.
-*   A valid **VirusTotal API Key** (Get one [here](https://www.virustotal.com/gui/join-us)).
+4. **See the results in real-time** — The status column shows you exactly what's happening:
+   - 🔵 **Scanning...** — Currently being analyzed
+   - ✅ **Clean** — No threats detected. Click to see the full VirusTotal report.
+   - 🐛 **Compromised (X)** — Uh oh. X vendors flagged this file. Click for details, or delete it on the spot.
+   - ⚠️ **Failed** — Something went wrong (file too large, network issues, etc.)
 
-## 🏃 Getting Started
+5. **Files get sorted automatically** — Clean files go to your "Clean" folder. Sketchy files get quarantined in your "Compromised" folder.
 
-### 1. Clone the Repository
+6. **Pause anytime** — Click the status text to toggle between scanning and paused. Life happens.
+
+## Quick Setup
+
+1. **Get a VirusTotal API key** — It's free! [Sign up here](https://www.virustotal.com/gui/join-us).
+
+2. **Run the app** and click **Settings**.
+
+3. **Paste your API key** and configure your directories:
+   - **Scan Directory**: Where you'll drop files to be scanned
+   - **Clean Directory**: Where safe files get moved
+   - **Compromised Directory**: The quarantine zone
+
+4. That's it. Start dropping files.
+
+## Features at a Glance
+
+- 🔍 **Real-time directory monitoring** — Watches your folder for new files
+- 🚀 **Automatic uploads** — No manual intervention needed
+- 📊 **Live status updates** — See exactly what's happening with each file
+- 🗂️ **Auto-sorting** — Clean and compromised files go to separate folders
+- 🔗 **One-click reports** — Click any result to view the full VirusTotal analysis
+- 🗑️ **Quick delete** — One-click to permanently delete compromised files
+- ⏸️ **Pause/Resume** — Take a break when you need to
+- ⚙️ **Smart rate limiting** — Respects your VirusTotal API quotas automatically
+- 🔔 **Windows notifications** — Get alerted when threats are found
+- ♿ **Fully accessible** — Keyboard navigation and screen reader support
+
+## Building from Source
+
+### Prerequisites
+
+- [.NET 10.0 SDK](https://dotnet.microsoft.com/)
+- A [VirusTotal API Key](https://www.virustotal.com/gui/join-us)
+
+### Clone and Run
 
 ```bash
 git clone https://github.com/yourusername/VirusTotalDirectoryScanner.git
 cd VirusTotalDirectoryScanner
-```
-
-### 2. Configuration
-
-The application requires a VirusTotal API Key to function. You can configure this securely using .NET User Secrets during development or via the Settings UI in the application.
-
-**Using User Secrets (Recommended for Dev):**
-
-```bash
-cd VirusTotalDirectoryScanner
-dotnet user-secrets init
-dotnet user-secrets set "VirusTotal:ApiKey" "YOUR_API_KEY_HERE"
-```
-
-**Using the UI:**
-1. Run the application.
-2. Click on the **Settings** button.
-3. Enter your API Key and configure the directories.
-
-### 3. Build and Run
-
-```bash
 dotnet build
 dotnet run --project VirusTotalDirectoryScanner
 ```
 
-## 📖 Usage
-
-1.  **Configure Directories**:
-    *   **Scan Directory**: The folder where you will drop files to be scanned.
-    *   **Clean Directory**: Where safe files will be moved.
-    *   **Compromised Directory**: Where malicious files will be moved.
-2.  **Start Scanning**: Click the "Start" button on the main dashboard.
-3.  **Drop Files**: Place any file into the **Scan Directory**.
-4.  **Monitor**: Watch the application log as it detects, uploads, and sorts your files.
-
-## 📂 Project Structure
-
-*   `VirusTotalDirectoryScanner/`: Main application project.
-    *   `Services/`: Core logic (Scanning, API, File Ops).
-    *   `ViewModels/`: MVVM ViewModels.
-    *   `Views/`: Avalonia UI Views (`.axaml`).
-    *   `Models/`: Data models and DTOs.
-*   `VirusTotalDirectoryScanner.Tests/`: Unit tests using xUnit.
-
-## 🧪 Running Tests
-
-To run the unit tests:
+### Run the Tests
 
 ```bash
 dotnet test
 ```
 
-## 🤝 Contributing
+## Tech Stack
 
-Contributions are welcome! Please follow the guidelines in [agents.md](agents.md) for coding standards and architectural patterns.
+Built with modern .NET technologies:
 
-1.  Fork the repository.
-2.  Create a feature branch (`git checkout -b feature/amazing-feature`).
-3.  Commit your changes (`git commit -m 'Add some amazing feature'`).
-4.  Push to the branch (`git push origin feature/amazing-feature`).
-5.  Open a Pull Request.
+- **[.NET 10](https://dotnet.microsoft.com/)** — The runtime
+- **[Avalonia UI](https://avaloniaui.net/)** — Cross-platform desktop UI
+- **[CommunityToolkit.Mvvm](https://github.com/CommunityToolkit/dotnet)** — MVVM made easy
+- **[Refit](https://github.com/reactiveui/refit)** — Type-safe REST client
 
-## 📄 License
+## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+MIT License — see [LICENSE](LICENSE) for details.
+
+---
+
+*Stay safe out there. Trust no file.* 🔒

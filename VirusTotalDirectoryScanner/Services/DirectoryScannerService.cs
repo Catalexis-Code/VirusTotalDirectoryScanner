@@ -129,6 +129,8 @@ public class DirectoryScannerService : IDisposable
 
         if (directoryReady)
         {
+            _isDirectoryAvailable = true;
+            DirectoryAvailabilityChanged?.Invoke(this, true);
             SetupWatcher();
             ScanExistingFiles();
             LogMessage?.Invoke(this, $"Started monitoring {settings.Paths.ScanDirectory}");

@@ -62,6 +62,15 @@ internal static class AppConfiguration
 	public static Settings GetAppSettings(IConfiguration config)
 	{
 		Settings settings = new();
+		
+		// Check if FileExclusions exists in the config (saved settings file)
+		// If so, clear the defaults before binding to prevent duplicates
+		var exclusionsSection = config.GetSection("FileExclusions");
+		if (exclusionsSection.Exists())
+		{
+			settings.FileExclusions.Clear();
+		}
+		
 		config.Bind(settings);
 		return settings;
 	}

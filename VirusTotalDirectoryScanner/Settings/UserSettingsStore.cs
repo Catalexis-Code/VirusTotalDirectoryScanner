@@ -17,6 +17,9 @@ internal static class UserSettingsStore
 			Directory.CreateDirectory(directory);
 		}
 
+		// Deduplicate FileExclusions before saving to prevent duplicate entries
+		settings.FileExclusions = settings.FileExclusions.Distinct().ToList();
+
 		await using FileStream stream = File.Create(filePath);
 		await JsonSerializer.SerializeAsync(stream, settings, SerializerOptions, cancellationToken);
 	}

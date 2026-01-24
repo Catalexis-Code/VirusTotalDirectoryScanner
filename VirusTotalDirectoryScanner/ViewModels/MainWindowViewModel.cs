@@ -92,9 +92,26 @@ public partial class MainWindowViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private void ToggleScanning()
+    {
+        if (IsMonitoring)
+        {
+            StopScanning();
+        }
+        else
+        {
+            StartScanning();
+        }
+    }
+
+    [RelayCommand]
     private void StartScanning()
     {
-        StopScanning();
+        // Don't restart if already monitoring, but DO retry if we were in an error state or it was stopped
+        if (IsMonitoring && !HasError && !IsDirectoryUnavailable)
+             return;
+
+        StopScanning(); // Ensure clean state
         ErrorMessage = string.Empty;
 
         try
@@ -105,7 +122,7 @@ public partial class MainWindowViewModel : ObservableObject
 
             if (string.IsNullOrWhiteSpace(_settingsService.ApiKey) || string.IsNullOrWhiteSpace(settings.Paths.ScanDirectory))
             {
-                StatusText = "Configuration missing";
+                StatusText = "Config Missing";
                 ErrorMessage = "Configuration missing. Please check settings.";
                 IsMonitoring = false;
                 return;
@@ -127,12 +144,12 @@ public partial class MainWindowViewModel : ObservableObject
             _scannerService.DirectoryAvailabilityChanged += OnDirectoryAvailabilityChanged;
             
             _scannerService.Start();
-            StatusText = "Monitoring:";
+            StatusText = "Active";
             IsMonitoring = true;
         }
         catch (Exception ex)
         {
-            StatusText = "Stopped";
+            StatusText = "Error";
             ErrorMessage = $"Error starting scanner: {ex.Message}";
             IsMonitoring = false;
         }
@@ -142,6 +159,8 @@ public partial class MainWindowViewModel : ObservableObject
     {
         IsMonitoring = false;
         IsDirectoryUnavailable = false;
+        StatusText = "Paused";
+        
         if (_scannerService != null)
         {
             _scannerService.ScanResultUpdated -= OnScanResultUpdated;

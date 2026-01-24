@@ -23,7 +23,15 @@
         <StackPanel Spacing="8">
           <TextBlock FontWeight="SemiBold" Text="Monitoring" />
           <StackPanel Orientation="Horizontal" Spacing="8">
-            <TextBlock Text="{Binding StatusText}" VerticalAlignment="Center" />
+            <Button Command="{Binding ToggleScanningCommand}" 
+                    Content="{Binding StatusText}" 
+                    VerticalAlignment="Center" 
+                    Background="Transparent" 
+                    Padding="0" 
+                    Cursor="Hand" 
+                    AutomationProperties.Name="Toggle Monitoring"
+                    ToolTip.Tip="Click to Start/Pause Monitoring" 
+                    FontWeight="Normal" />
             <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding IsMonitoring}">
               <TextBlock Text="{Binding ScanDirectoryName}" ToolTip.Tip="{Binding ScanDirectoryPath}" FontWeight="Bold" VerticalAlignment="Center" />
               <TextBlock Text="⚠" 
